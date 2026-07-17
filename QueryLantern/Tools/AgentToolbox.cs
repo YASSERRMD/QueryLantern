@@ -25,7 +25,7 @@ public sealed class AgentToolbox
     /// the caller can embed them in the agent spec. Read tools run immediately; write tools stage for
     /// human approval (the run suspends until a decision resumes it).
     /// </summary>
-    public List<ToolSpec> RegisterTools(Runtime runtime, IDatabaseAdapter adapter, int maxRows = 1000)
+    public List<ToolSpec> RegisterTools(Runtime runtime, IDatabaseAdapter adapter, int maxRows = 1000, Action<string>? onRunQueryResult = null)
     {
         var specs = new List<ToolSpec>();
         var queryTools = new QueryTools(adapter, maxRows);
@@ -40,7 +40,9 @@ public sealed class AgentToolbox
         ToolRegistry.Register(runtime, "run_query", "Execute a read-only SQL query against the active connection and return the rows", input =>
         {
             var sql = input.TryGetProperty("sql", out var sqlEl) ? sqlEl.GetString() ?? string.Empty : string.Empty;
-            return queryTools.RunQuery(sql);
+            var result = queryTools.RunQuery(sql);
+            onRunQueryResult?.Invoke(result);
+            return result;
         });
         specs.Add(new ToolSpec("run_query", "Execute a read-only SQL query against the active connection and return the rows", sqlInput));
 
