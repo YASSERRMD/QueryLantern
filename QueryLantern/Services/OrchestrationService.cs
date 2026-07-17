@@ -81,4 +81,39 @@ public sealed class OrchestrationService
 
         return (total, capped);
     }
+
+    /// <summary>
+    /// Builds the final execution query plan after deduplication and cap enforcement. Identical SQL is
+    /// run only once (later copies are dropped with a reason); queries beyond the cap are dropped with a
+    /// reason. Filter values from prior step result sets are resolved onto each surviving query.
+    /// </summary>
+    public QueryPlan BuildPlan(
+        IReadOnlyList<AnalysisQuery> requested,
+        IReadOnlyDictionary<string, QueryResult> priorResults)
+    {
+        var queries = new List<AnalysisQuery>();
+        var dropped = new List<string>();
+        var seenSql = new HashSet<string>(System.StringComparer.Ordinal);
+
+        foreach (var q in requested)
+        {
+            if (queries.Count >= _maxQueries)
+            {
+                dropped.Add($"Dropped query for step {q.StepId}: exceeded max queries ({_maxQueries}).");
+                continue;
+            }
+
+            if (!seenSql.Add(Normalize(q.Sql)))
+            {
+                dropped.Add($"Dropped query for step {q.StepId}: duplicate of an earlier identical query.");
+                continue;
+            }
+
+            queries.Add(q with { FilterValues = ResolveFilterValues(q, priorResults) });
+        }
+
+        return new QueryPlan(queries, _maxRowsTotal, dropped);
+    }
+
+    private static string Normalize(string sql) => (sql ?? string.Empty).Trim().ToLowerInvariant();
 }
