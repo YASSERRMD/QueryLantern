@@ -1,0 +1,40 @@
+@namespace QueryLantern.Components
+@using QueryLantern.Services
+
+@if (Result is not null)
+{
+    var untraced = Result.Claims.Where(c => !c.Traced).Select(c => c.Figure).ToList();
+    <div class="grounding-card card p-2 mb-3 @(_warn ? "border-danger" : "border-success")">
+        @if (Result.HasEmptyOrNullResult)
+        {
+            <div class="text-warning small">No data returned. The answer should state that nothing was found rather than guess.</div>
+        }
+        @if (Result.AggregateMismatch)
+        {
+            <div class="text-danger small">The reported total disagrees with the actual row count. Re-check the aggregate.</div>
+        }
+        @if (untraced.Count > 0)
+        {
+            <div class="text-danger small mt-1">
+                The following figures in the answer could not be traced to the data:
+                <ul class="mb-0">
+                    @foreach (var f in untraced)
+                    {
+                        <li><code>@f</code></li>
+                    }
+                </ul>
+            </div>
+        }
+        @if (untraced.Count == 0 && !Result.HasEmptyOrNullResult && !Result.AggregateMismatch)
+        {
+            <div class="text-success small">Every figure in the answer traces to the returned data.</div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public required string Answer { get; set; }
+    [Parameter] public required GroundingResult Result { get; set; }
+
+    private bool _warn => Result.HasEmptyOrNullResult || Result.AggregateMismatch || Result.Claims.Any(c => !c.Traced);
+}
