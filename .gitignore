@@ -25,6 +25,8 @@ TestResults/
 *.sqlite
 *.sqlite3
 App_Data/
+vault.key
+catalog.db
 
 # Logs
 *.log
