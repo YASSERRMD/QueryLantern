@@ -1,9 +1,153 @@
 @page "/chat"
+@using QueryLantern.Data
+@using QueryLantern.Models
+@using QueryLantern.Services
+@inject ChatService ChatSvc
+@inject ConnectionRepository ConnectionRepo
+@inject ProviderRepository ProviderRepo
+
 <PageTitle>Chat</PageTitle>
 
 <h2>Chat</h2>
 <p class="text-muted">Ask your data questions in natural language.</p>
 
-<div class="card p-4">
-    <p class="text-muted mb-0">Connect a database and pick a provider to start a conversation.</p>
+<div class="row g-3 mb-3">
+    <div class="col-md-5">
+        <label class="form-label">Connection</label>
+        <select class="form-select" @bind="_connectionId">
+            <option value="0">-- select --</option>
+            @foreach (var c in _connections)
+            {
+                <option value="@c.Id">@c.Name</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-5">
+        <label class="form-label">Provider</label>
+        <select class="form-select" @bind="_providerId">
+            <option value="0">-- select --</option>
+            @foreach (var p in _providers)
+            {
+                <option value="@p.Id">@p.Name (@p.ModelId)</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-outline-secondary w-100" @onclick="Clear">New chat</button>
+    </div>
 </div>
+
+<div class="chat-log card p-3 mb-3" style="min-height: 320px; max-height: 60vh; overflow:auto;">
+    @if (ChatSvc.Entries.Count == 0)
+    {
+        <p class="text-muted mb-0">Pick a connection and provider, then ask a question.</p>
+    }
+    else
+    {
+        @foreach (var e in ChatSvc.Entries)
+        {
+            <div class="chat-entry @(e.Role)">
+                <div class="chat-role">@e.Role</div>
+                <div class="chat-content">@e.Content</div>
+                @if (e.ToolCalls.Count > 0)
+                {
+                    <div class="chat-tools">
+                        @foreach (var t in e.ToolCalls)
+                        {
+                            <span class="badge tool-call">@t</span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@if (ChatSvc.State == ChatService.ChatState.AwaitingApproval && ChatSvc.Pending is not null)
+{
+    <div class="approval card p-3 mb-3 border-warning">
+        <h5 class="text-warning">Approve this write?</h5>
+        <pre class="sql-preview">@ChatSvc.Pending.Sql</pre>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" @onclick="Approve">Approve &amp; run</button>
+            <button class="btn btn-outline-danger" @onclick="Reject">Reject</button>
+        </div>
+    </div>
+}
+
+@if (ChatSvc.State == ChatService.ChatState.Error)
+{
+    <div class="alert alert-danger">@ChatSvc.LastError</div>
+}
+
+<div class="input-row d-flex gap-2">
+    <input class="form-control" placeholder="Ask something like 'how many users signed up last week?'"
+           @bind="_draft" @onkeydown="OnKey" disabled="@(_busy || _connectionId == 0 || _providerId == 0)" />
+    <button class="btn btn-primary" @onclick="Send" disabled="@(_busy || _connectionId == 0 || _providerId == 0)">Send</button>
+</div>
+
+@if (ChatSvc.LastCost is not null)
+{
+    <div class="text-muted mt-2">Estimated cost: @ChatSvc.LastCost</div>
+}
+
+@code {
+    private List<ConnectionProfile> _connections = new();
+    private List<ProviderProfile> _providers = new();
+    private int _connectionId;
+    private int _providerId;
+    private string _draft = string.Empty;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _connections = (await ConnectionRepo.ListAsync()).ToList();
+        _providers = (await ProviderRepo.ListAsync()).ToList();
+        ChatSvc.Changed += OnChanged;
+    }
+
+    public void Dispose() => ChatSvc.Changed -= OnChanged;
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task Send()
+    {
+        if (string.IsNullOrWhiteSpace(_draft)) return;
+        var message = _draft;
+        _draft = string.Empty;
+        _busy = true;
+        StateHasChanged();
+        await ChatSvc.SendAsync(message, _connectionId, _providerId);
+        _busy = false;
+        StateHasChanged();
+    }
+
+    private async Task Approve()
+    {
+        _busy = true;
+        StateHasChanged();
+        await ChatSvc.ApproveAsync();
+        _busy = false;
+        StateHasChanged();
+    }
+
+    private async Task Reject()
+    {
+        _busy = true;
+        StateHasChanged();
+        await ChatSvc.RejectAsync();
+        _busy = false;
+        StateHasChanged();
+    }
+
+    private void Clear()
+    {
+        ChatSvc.Reset();
+        _busy = false;
+    }
+
+    private void OnKey(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") _ = Send();
+    }
+}

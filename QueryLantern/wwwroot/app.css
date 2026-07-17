@@ -175,3 +175,50 @@ main {
     right: 1rem;
     top: 0.5rem;
 }
+
+.chat-entry {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--ql-border);
+    background: var(--ql-panel);
+}
+.chat-entry.user {
+    background: var(--ql-panel-2);
+    border-color: var(--ql-accent);
+}
+.chat-role {
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: var(--ql-muted);
+    margin-bottom: 0.25rem;
+}
+.chat-content {
+    white-space: pre-wrap;
+}
+.chat-tools {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.tool-call {
+    background: var(--ql-panel-2);
+    color: var(--ql-accent-2);
+    text-align: left;
+    font-weight: normal;
+    white-space: pre-wrap;
+}
+.sql-preview {
+    background: var(--ql-panel-2);
+    border: 1px solid var(--ql-border);
+    border-radius: 8px;
+    padding: 0.75rem;
+    color: var(--ql-text);
+    max-height: 200px;
+    overflow: auto;
+}
+.approval {
+    border-color: #b58b1a;
+}
