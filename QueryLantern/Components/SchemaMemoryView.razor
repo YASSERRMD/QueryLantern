@@ -1,0 +1,87 @@
+@namespace QueryLantern.Components
+@using QueryLantern.Models
+@using QueryLantern.Services
+@inject SchemaMemoryService Memory
+
+@if (ConnectionId > 0)
+{
+    <div class="card p-3 mt-3">
+        <h4>Learned schema facts</h4>
+        <p class="text-muted small mb-2">Durable facts the assistant has learned about this database. They are shown to the model as grounding context.</p>
+
+        @if (_facts is null)
+        {
+            <p class="text-muted mb-0">Loading…</p>
+        }
+        else if (_facts.Count == 0)
+        {
+            <p class="text-muted mb-0">No learned facts yet.</p>
+        }
+        else
+        {
+            <ul class="list-group mb-2">
+                @foreach (var f in _facts)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><span class="badge bg-secondary">@f.Kind</span> @f.Fact</span>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(f.Id)">Delete</button>
+                    </li>
+                }
+            </ul>
+        }
+
+        <div class="d-flex gap-2">
+            <InputSelect class="form-select form-select-sm w-auto" @bind-Value="_kind">
+                @foreach (var k in Enum.GetValues<SchemaFactKind>())
+                {
+                    <option value="@k">@k</option>
+                }
+            </InputSelect>
+            <InputText class="form-control form-control-sm" @bind-Value="_newFact" placeholder="Describe a learned fact…" />
+            <button class="btn btn-sm btn-primary" @onclick="AddAsync">Add</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int ConnectionId { get; set; }
+
+    private List<SchemaFact>? _facts;
+    private string _newFact = string.Empty;
+    private SchemaFactKind _kind = SchemaFactKind.Quirk;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (ConnectionId <= 0)
+        {
+            _facts = null;
+            return;
+        }
+
+        _facts = (await Memory.ListAsync(ConnectionId)).ToList();
+    }
+
+    private async Task AddAsync()
+    {
+        var trimmed = _newFact.Trim();
+        if (string.IsNullOrEmpty(trimmed) || ConnectionId <= 0)
+        {
+            return;
+        }
+
+        await Memory.RecordAsync(ConnectionId, trimmed, _kind);
+        _newFact = string.Empty;
+        await RefreshAsync();
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        await Memory.DeleteAsync(id);
+        await RefreshAsync();
+    }
+}

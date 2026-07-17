@@ -6,6 +6,7 @@
 @using QueryLantern.Security
 @inject ConnectionRepository ConnectionRepo
 @inject SecretVault Vault
+@using QueryLantern.Components
 
 <PageTitle>Connections</PageTitle>
 
@@ -96,6 +97,7 @@
                                 <td>@c.Host</td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartEdit(c)">Edit</button>
+                                    <button class="btn btn-sm btn-outline-info" @onclick="() => _selectedId = c.Id">Facts</button>
                                     <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(c)">Delete</button>
                                 </td>
                             </tr>
@@ -107,9 +109,12 @@
     </div>
 </div>
 
+<SchemaMemoryView ConnectionId="_selectedId" />
+
 @code {
     private List<ConnectionProfile> _list = new();
     private ConnectionProfile? _editing;
+    private int _selectedId;
     private ConnectionFormModel _model = new();
     private EditContext _editContext = null!;
     private string? _error;
