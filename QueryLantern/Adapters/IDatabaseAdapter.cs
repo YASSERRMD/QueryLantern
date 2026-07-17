@@ -8,7 +8,7 @@ using QueryLantern.Models;
 /// The common contract every database engine implements. The UI and the agent tools work against
 /// this interface so no engine specific code leaks into the product surface.
 /// </summary>
-public interface IDatabaseAdapter
+public interface IDatabaseAdapter : IDisposable
 {
     /// <summary>The engine this adapter targets.</summary>
     DatabaseEngine Engine { get; }
