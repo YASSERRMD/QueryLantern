@@ -1,16 +1,19 @@
 ﻿@inherits LayoutComponentBase
 
 <div class="page">
-    <div class="sidebar">
+    <aside class="sidebar">
+        <div class="brand">
+            <span class="brand-mark">⌗</span>
+            <span class="brand-name">QueryLantern</span>
+        </div>
         <NavMenu />
-    </div>
+    </aside>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+        <div class="top-row">
+            <span class="app-tagline">Conversational SQL, on your data, on your machine</span>
         </div>
-
-        <article class="content px-4">
+        <article class="content">
             @Body
         </article>
     </main>
