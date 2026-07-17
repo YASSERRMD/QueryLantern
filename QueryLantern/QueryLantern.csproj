@@ -7,11 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClickHouse.Client" Version="7.3.0" />
+    <PackageReference Include="DuckDB.NET.Bindings" Version="1.2.1" />
+    <PackageReference Include="DuckDB.NET.Data" Version="1.2.1" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
     <PackageReference Include="MySqlConnector" Version="2.4.0" />
     <PackageReference Include="Npgsql" Version="9.0.2" />
     <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.6.0" />
+    <PackageReference Include="System.Data.Odbc" Version="8.0.0" />
     <PackageReference Include="Yasserrmd.Ancora" Version="0.1.2" />
   </ItemGroup>
 
