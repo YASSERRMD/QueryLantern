@@ -1,4 +1,5 @@
 using QueryLantern.Components;
+using QueryLantern.Data;
 using QueryLantern.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +7,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Local SQLite catalog for saved connections and provider profiles. Path is configurable so the
+// app stays runnable: it bootstraps its tables on first use.
+var catalogPath = builder.Configuration["Catalog:Path"] ?? "catalog.db";
+builder.Services.AddSingleton(new CatalogStore(catalogPath));
+builder.Services.AddSingleton<ConnectionRepository>();
+builder.Services.AddSingleton<ProviderRepository>();
 
 // Ancora agent runtime. The provider endpoint is read from configuration so the app stays
 // runnable before a real provider profile is configured in the UI (later phases).
