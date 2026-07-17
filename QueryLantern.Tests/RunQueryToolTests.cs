@@ -33,7 +33,7 @@ public class RunQueryToolTests : IAsyncLifetime
     {
         var tools = new QueryTools(_adapter);
         var json = tools.RunQuery("SELECT id, v FROM t ORDER BY id;");
-        Assert.Contains("\"rowCount\":2", json);
+        Assert.True(json.Contains("\"rowCount\":2"), $"JSON was: {json}");
         Assert.Contains("\"x\"", json);
     }
 
@@ -42,7 +42,7 @@ public class RunQueryToolTests : IAsyncLifetime
     {
         var tools = new QueryTools(_adapter);
         var json = tools.RunQuery("DELETE FROM t;");
-        Assert.Contains("Only read-only statements are allowed", json);
+        Assert.True(json.Contains("Only read-only statements are allowed"), $"JSON was: {json}");
         Assert.Contains("Write", json);
     }
 

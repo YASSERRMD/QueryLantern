@@ -27,6 +27,26 @@ public sealed class AncoraRunner
     }
 
     /// <summary>
+    /// Starts a run with tool registration and exposes the handle plus the event stream so the
+    /// caller can drive human in the loop resume. The runtime is owned by the returned session and
+    /// must be disposed when the run is finished (including after a resume).
+    /// </summary>
+    public RunnerSession StartRun(
+        ProviderConfig provider,
+        string model,
+        string instructions,
+        Action<Runtime>? registerTools = null,
+        IReadOnlyList<ToolSpec>? tools = null)
+    {
+        var runtime = new Runtime(provider);
+        registerTools?.Invoke(runtime);
+        var spec = new AgentSpec(model, instructions, tools is null ? new List<ToolSpec>() : tools.ToList());
+        var agent = new Agent(runtime);
+        var handle = agent.Run(spec);
+        return new RunnerSession(runtime, handle);
+    }
+
+    /// <summary>
     /// Starts a run and streams its events: StartedEvent, TokenEvent, ToolCallEvent, SuspendedEvent,
     /// ResumedEvent, FailedEvent, and CompletedEvent. The runtime is created for the run and disposed
     /// once the stream completes. The optional <paramref name="registerTools"/> callback registers
