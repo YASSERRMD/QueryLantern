@@ -30,6 +30,7 @@ builder.Services.AddSingleton<SchemaService>();
 builder.Services.AddHttpClient<ProviderClient>();
 builder.Services.AddSingleton<ModelRouter>();
 builder.Services.AddSingleton<HumanInTheLoop>();
+builder.Services.AddSingleton<ApprovalService>();
 
 // Ancora agent runtime. The provider endpoint is read from configuration so the app stays
 // runnable before a real provider profile is configured in the UI (later phases).
