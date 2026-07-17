@@ -31,6 +31,7 @@ public sealed class AgentToolbox
         var queryTools = new QueryTools(adapter, maxRows);
         var writeTools = new WriteTools(adapter);
         var schemaTools = new SchemaTools(adapter, _schemaCache);
+        var plannerTools = new PlannerTool(_schemaCache);
 
         var sqlInput = new ToolInputSchema(
             "object",
@@ -95,6 +96,22 @@ public sealed class AgentToolbox
             return schemaTools.ExplainPlan(sql);
         });
         specs.Add(new ToolSpec("explain_plan", "Return the database engine execution plan for a SELECT statement", planInput));
+
+        var plannerInput = new ToolInputSchema(
+            "object",
+            new Dictionary<string, ToolInputProperty>
+            {
+                ["question"] = new("string", "The user question to plan for"),
+                ["schemaSummary"] = new("string", "Optional compact schema summary to ground the plan")
+            },
+            new List<string> { "question" });
+        ToolRegistry.Register(runtime, "planner_plan", "Produce an explicit, inspectable PlanGraph for a user question against the schema", input =>
+        {
+            var question = input.TryGetProperty("question", out var qEl) ? qEl.GetString() ?? string.Empty : string.Empty;
+            var summary = input.TryGetProperty("schemaSummary", out var sEl) ? sEl.GetString() : null;
+            return plannerTools.Plan(question, summary);
+        });
+        specs.Add(new ToolSpec("planner_plan", "Produce an explicit, inspectable PlanGraph for a user question against the schema", plannerInput));
 
         // propose_write requires approval: Ancora suspends the run when this tool is called.
         ToolRegistry.RegisterRequiringApproval(runtime, "propose_write", "Stage a mutating SQL statement for human approval. Does not execute until approved.", input =>
