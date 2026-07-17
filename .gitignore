@@ -1,0 +1,35 @@
+# Temporary files
+temp/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Test results
+TestResults/
+[Tt]est[Rr]esult*/
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# Local catalog and runtime data
+*.db
+*.sqlite
+*.sqlite3
+App_Data/
+
+# Logs
+*.log
+logs/
+
+# Secret material (never commit)
+secrets.json
+*.pfx
