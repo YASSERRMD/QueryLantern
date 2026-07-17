@@ -102,6 +102,11 @@
     <CritiqueView Critique="ChatSvc.LastCritique" />
 }
 
+@if (ChatSvc.LastConfidence is not null)
+{
+    <ConfidenceView Score="ChatSvc.LastConfidence" />
+}
+
 @if (ChatSvc.State == ChatService.ChatState.AwaitingApproval && ChatSvc.Pending is not null)
 {
     <div class="approval card p-3 mb-3 border-warning">
