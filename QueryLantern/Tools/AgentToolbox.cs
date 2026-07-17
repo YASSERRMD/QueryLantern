@@ -13,17 +13,19 @@ using QueryLantern.Adapters;
 public sealed class AgentToolbox
 {
     /// <summary>
-    /// Registers run_query (read only) on the runtime for the given adapter and returns its spec.
-    /// The schema aware tools are added in Phase 13.
+    /// Registers the governed tools on the runtime for the given adapter and returns their specs so
+    /// the caller can embed them in the agent spec. Read tools run immediately; write tools stage for
+    /// human approval (the run suspends until a decision resumes it).
     /// </summary>
-    public List<ToolSpec> RegisterReadTools(Runtime runtime, IDatabaseAdapter adapter, int maxRows = 1000)
+    public List<ToolSpec> RegisterTools(Runtime runtime, IDatabaseAdapter adapter, int maxRows = 1000)
     {
         var specs = new List<ToolSpec>();
         var queryTools = new QueryTools(adapter, maxRows);
+        var writeTools = new WriteTools(adapter);
 
-        var inputSchema = new ToolInputSchema(
+        var sqlInput = new ToolInputSchema(
             "object",
-            new Dictionary<string, ToolInputProperty> { ["sql"] = new("string", "A single read-only SQL SELECT statement") },
+            new Dictionary<string, ToolInputProperty> { ["sql"] = new("string", "A single SQL statement") },
             new List<string> { "sql" });
 
         ToolRegistry.Register(runtime, "run_query", "Execute a read-only SQL query against the active connection and return the rows", input =>
@@ -31,8 +33,28 @@ public sealed class AgentToolbox
             var sql = input.TryGetProperty("sql", out var sqlEl) ? sqlEl.GetString() ?? string.Empty : string.Empty;
             return queryTools.RunQuery(sql);
         });
+        specs.Add(new ToolSpec("run_query", "Execute a read-only SQL query against the active connection and return the rows", sqlInput));
 
-        specs.Add(new ToolSpec("run_query", "Execute a read-only SQL query against the active connection and return the rows", inputSchema));
+        // propose_write requires approval: Ancora suspends the run when this tool is called.
+        ToolRegistry.RegisterRequiringApproval(runtime, "propose_write", "Stage a mutating SQL statement for human approval. Does not execute until approved.", input =>
+        {
+            var sql = input.TryGetProperty("sql", out var sqlEl) ? sqlEl.GetString() ?? string.Empty : string.Empty;
+            return writeTools.ProposeWrite(sql);
+        });
+        specs.Add(new ToolSpec("propose_write", "Stage a mutating SQL statement for human approval. Does not execute until approved.", sqlInput));
+
         return specs;
     }
+
+    /// <summary>
+    /// Registers only the read tool (used before the write tool is needed).
+    /// </summary>
+    public List<ToolSpec> RegisterReadTools(Runtime runtime, IDatabaseAdapter adapter, int maxRows = 1000)
+        => RegisterTools(runtime, adapter, maxRows);
+
+    /// <summary>
+    /// Executes a staged, approved write statement via the write tools bound to the adapter.
+    /// </summary>
+    public int ExecuteApprovedWrite(IDatabaseAdapter adapter, string sql)
+        => new WriteTools(adapter).ExecuteApproved(sql);
 }
