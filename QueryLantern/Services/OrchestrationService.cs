@@ -13,6 +13,15 @@ using QueryLantern.Models;
 /// </summary>
 public sealed class OrchestrationService
 {
+    private readonly int _maxQueries;
+    private readonly int _maxRowsTotal;
+
+    public OrchestrationService(int maxQueries = 12, int maxRowsTotal = 20000)
+    {
+        _maxQueries = maxQueries;
+        _maxRowsTotal = maxRowsTotal;
+    }
+
     /// <summary>
     /// Resolves the filter values a query should use from the result sets of its source steps (the first
     /// column of each prior row, for example a row id). These values are then available to the query
@@ -49,5 +58,27 @@ public sealed class OrchestrationService
         IReadOnlyDictionary<string, QueryResult> priorResults)
     {
         return requested.Select(q => q with { FilterValues = ResolveFilterValues(q, priorResults) }).ToList();
+    }
+
+    /// <summary>
+    /// Enforces the cap on the total number of rows pulled across all executed result sets, returning
+    /// the capped total and a flag indicating whether a result was truncated.
+    /// </summary>
+    public (int TotalRows, bool Capped) TallyRows(IReadOnlyList<QueryResult> results)
+    {
+        var total = 0;
+        var capped = false;
+        foreach (var r in results)
+        {
+            total += r.RowCount;
+            if (total > _maxRowsTotal)
+            {
+                capped = true;
+                total = _maxRowsTotal;
+                break;
+            }
+        }
+
+        return (total, capped);
     }
 }
