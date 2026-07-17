@@ -44,4 +44,22 @@ public sealed class QueryTools
             truncatedAt = result.TruncatedAt
         });
     }
+
+    /// <summary>
+    /// Dry-runs the SELECT through the engine (compile without execute) before running it. If validation
+    /// fails, returns structured feedback describing the error and does NOT execute the query. If it
+    /// passes, executes and returns the result set. This is the governed entry point the agent uses so
+    /// no rejected query is ever executed.
+    /// </summary>
+    public string RunQueryValidated(string sql)
+    {
+        var validator = new QueryLantern.Services.QueryValidator(_adapter);
+        var check = validator.Validate(sql);
+        if (!check.IsValid)
+        {
+            return validator.ToFeedback(sql);
+        }
+
+        return RunQuery(sql);
+    }
 }
