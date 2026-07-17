@@ -42,9 +42,30 @@ public sealed class AgentToolbox
     /// </summary>
     public List<ToolSpec> RegisterTools(Runtime runtime, IDatabaseAdapter adapter, int maxRows = 1000, Action<string>? onRunQueryResult = null)
     {
+        var specs = RegisterReadHandlers(runtime, adapter, maxRows, onRunQueryResult);
+        var writeTools = new WriteTools(adapter);
+        var sqlInput = new ToolInputSchema(
+            "object",
+            new Dictionary<string, ToolInputProperty> { ["sql"] = new("string", "A single SQL statement") },
+            new List<string> { "sql" });
+        ToolRegistry.RegisterRequiringApproval(runtime, "propose_write", "Stage a mutating SQL statement for human approval. Does not execute until approved.", input =>
+        {
+            var sql = input.TryGetProperty("sql", out var sqlEl) ? sqlEl.GetString() ?? string.Empty : string.Empty;
+            return writeTools.ProposeWrite(sql);
+        });
+        specs.Add(new ToolSpec("propose_write", "Stage a mutating SQL statement for human approval. Does not execute until approved.", sqlInput));
+        return specs;
+    }
+
+    /// <summary>
+    /// Registers the read-only governed tool handlers on a runtime (list_tables, describe_table,
+    /// sample_rows, explain_plan, run_query, planner_plan) and returns their specs. Shared by the
+    /// single-agent run and the multi-step graph run so every node can call any read tool.
+    /// </summary>
+    public List<ToolSpec> RegisterReadHandlers(Runtime runtime, IDatabaseAdapter adapter, int maxRows = 1000, Action<string>? onRunQueryResult = null)
+    {
         var specs = new List<ToolSpec>();
         var queryTools = new QueryTools(adapter, maxRows);
-        var writeTools = new WriteTools(adapter);
         var schemaTools = new SchemaTools(adapter, _schemaCache);
         var plannerTools = new PlannerTool(_schemaCache);
 
@@ -128,14 +149,49 @@ public sealed class AgentToolbox
         });
         specs.Add(new ToolSpec("planner_plan", "Produce an explicit, inspectable PlanGraph for a user question against the schema", plannerInput));
 
-        // propose_write requires approval: Ancora suspends the run when this tool is called.
-        ToolRegistry.RegisterRequiringApproval(runtime, "propose_write", "Stage a mutating SQL statement for human approval. Does not execute until approved.", input =>
-        {
-            var sql = input.TryGetProperty("sql", out var sqlEl) ? sqlEl.GetString() ?? string.Empty : string.Empty;
-            return writeTools.ProposeWrite(sql);
-        });
-        specs.Add(new ToolSpec("propose_write", "Stage a mutating SQL statement for human approval. Does not execute until approved.", sqlInput));
+        return specs;
+    }
 
+    /// <summary>
+    /// Builds the read-only tool specs (list_tables, describe_table, sample_rows, explain_plan,
+    /// run_query, planner_plan) without registering handlers on a runtime. Used to embed governed tools
+    /// in an AgentSpec for a graph node.
+    /// </summary>
+    public List<ToolSpec> BuildReadToolSpecs()
+    {
+        var specs = new List<ToolSpec>();
+        specs.Add(new ToolSpec("run_query", "Execute a read-only SQL query against the active connection and return the rows", new ToolInputSchema(
+            "object",
+            new Dictionary<string, ToolInputProperty> { ["sql"] = new("string", "A single SQL statement") },
+            new List<string> { "sql" })));
+        specs.Add(new ToolSpec("list_tables", "List the tables available in the connected database", new ToolInputSchema(
+            "object",
+            new Dictionary<string, ToolInputProperty> { ["schema"] = new("string", "Optional schema or catalog name to filter by") },
+            new List<string>())));
+        specs.Add(new ToolSpec("describe_table", "Describe a table: its columns, types, and nullability", new ToolInputSchema(
+            "object",
+            new Dictionary<string, ToolInputProperty> { ["table"] = new("string", "A table name, optionally schema-qualified as schema.name") },
+            new List<string> { "table" })));
+        specs.Add(new ToolSpec("sample_rows", "Return a small sample of rows from a table for quick preview", new ToolInputSchema(
+            "object",
+            new Dictionary<string, ToolInputProperty>
+            {
+                ["table"] = new("string", "A table name, optionally schema-qualified"),
+                ["limit"] = new("integer", "Maximum number of rows to return")
+            },
+            new List<string> { "table" })));
+        specs.Add(new ToolSpec("explain_plan", "Return the database engine execution plan for a SELECT statement", new ToolInputSchema(
+            "object",
+            new Dictionary<string, ToolInputProperty> { ["sql"] = new("string", "A single read-only SELECT statement") },
+            new List<string> { "sql" })));
+        specs.Add(new ToolSpec("planner_plan", "Produce an explicit, inspectable PlanGraph for a user question against the schema", new ToolInputSchema(
+            "object",
+            new Dictionary<string, ToolInputProperty>
+            {
+                ["question"] = new("string", "The user question to plan for"),
+                ["schemaSummary"] = new("string", "Optional compact schema summary to ground the plan")
+            },
+            new List<string> { "question" })));
         return specs;
     }
 
