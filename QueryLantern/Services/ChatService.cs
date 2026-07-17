@@ -28,6 +28,7 @@ public sealed class ChatService
     private readonly AgentToolbox _toolbox;
     private readonly HumanInTheLoop _hitl;
     private readonly SchemaCache _schemaCache;
+    private readonly ApprovalService _approval;
 
     public List<ChatEntry> Entries { get; } = new();
     public ChatState State { get; private set; } = ChatState.Idle;
@@ -38,13 +39,14 @@ public sealed class ChatService
 
     public event Action? Changed;
 
-    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache)
+    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval)
     {
         _settings = settings;
         _router = router;
         _toolbox = toolbox;
         _hitl = hitl;
         _schemaCache = schemaCache;
+        _approval = approval;
     }
 
     public void Reset()
@@ -94,6 +96,18 @@ public sealed class ChatService
                         break;
                     case SuspendedEvent se when se.ToolName == "propose_write":
                         var sql = ExtractSql(se.ArgumentsJson);
+                        if (_approval.AutoRejectWrites)
+                        {
+                            await _hitl.RejectAsync(session, ct);
+                            Finalize(session, adapter);
+                            break;
+                        }
+                        if (!_approval.RequireApproval)
+                        {
+                            await _hitl.ApproveAsync(session, adapter, sql, ct);
+                            Finalize(session, adapter);
+                            break;
+                        }
                         Pending = new PendingWrite(session, adapter, sql);
                         State = ChatState.AwaitingApproval;
                         Changed?.Invoke();

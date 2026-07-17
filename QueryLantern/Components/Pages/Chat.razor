@@ -71,7 +71,8 @@
 @if (ChatSvc.State == ChatService.ChatState.AwaitingApproval && ChatSvc.Pending is not null)
 {
     <div class="approval card p-3 mb-3 border-warning">
-        <h5 class="text-warning">Approve this write?</h5>
+        <h5 class="text-warning">⚠ Approve this write before it runs</h5>
+        <p class="text-muted mb-2">This statement will modify the database. Review it carefully — approving executes it exactly once.</p>
         <pre class="sql-preview">@ChatSvc.Pending.Sql</pre>
         <div class="d-flex gap-2">
             <button class="btn btn-primary" @onclick="Approve">Approve &amp; run</button>
