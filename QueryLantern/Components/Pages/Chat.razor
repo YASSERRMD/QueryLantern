@@ -1,10 +1,15 @@
 @page "/chat"
 @using QueryLantern.Data
 @using QueryLantern.Models
+@using QueryLantern.Adapters
+@using QueryLantern.Settings
 @using QueryLantern.Services
 @inject ChatService ChatSvc
+@inject PlanService PlanSvc
 @inject ConnectionRepository ConnectionRepo
 @inject ProviderRepository ProviderRepo
+@inject SettingsService Settings
+@inject ModelRouter Router
 
 <PageTitle>Chat</PageTitle>
 
@@ -63,6 +68,18 @@
     }
 </div>
 
+@if (PlanSvc.Current is not null)
+{
+    <PlanView />
+    @if (PlanSvc.State == PlanService.PlanRunState.AwaitingApproval)
+    {
+        <div class="d-flex gap-2 mb-3">
+            <button class="btn btn-success" @onclick="RunPlan" disabled="@(_busy || _connectionId == 0 || _providerId == 0)">Run plan</button>
+            <button class="btn btn-outline-secondary" @onclick="DiscardPlan">Discard plan</button>
+        </div>
+    }
+}
+
 @if (ChatSvc.LastResultSetJson is not null)
 {
     <ResultGrid Json="ChatSvc.LastResultSetJson" />
@@ -89,6 +106,7 @@
 <div class="input-row d-flex gap-2">
     <input class="form-control" placeholder="Ask something like 'how many users signed up last week?'"
            @bind="_draft" @onkeydown="OnKey" disabled="@(_busy || _connectionId == 0 || _providerId == 0)" />
+    <button class="btn btn-outline-primary" @onclick="Plan" disabled="@(_busy || _connectionId == 0 || _providerId == 0)">Plan</button>
     <button class="btn btn-primary" @onclick="Send" disabled="@(_busy || _connectionId == 0 || _providerId == 0)">Send</button>
 </div>
 
@@ -122,11 +140,55 @@
         _connections = (await ConnectionRepo.ListAsync()).ToList();
         _providers = (await ProviderRepo.ListAsync()).ToList();
         ChatSvc.Changed += OnChanged;
+        PlanSvc.Changed += OnChanged;
     }
 
-    public void Dispose() => ChatSvc.Changed -= OnChanged;
+    public void Dispose()
+    {
+        ChatSvc.Changed -= OnChanged;
+        PlanSvc.Changed -= OnChanged;
+    }
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task Plan()
+    {
+        if (string.IsNullOrWhiteSpace(_draft) || _connectionId == 0) return;
+        _busy = true;
+        StateHasChanged();
+        await PlanSvc.PlanAsync(_draft, _connectionId);
+        _busy = false;
+        StateHasChanged();
+    }
+
+    private async Task RunPlan()
+    {
+        if (_connectionId == 0 || _providerId == 0) return;
+        _busy = true;
+        StateHasChanged();
+        try
+        {
+            PlanSvc.ApprovePlan();
+            var resolved = await Settings.ResolveConnectionAsync(_connectionId);
+            var adapter = AdapterFactory.Create(resolved.Profile.Engine);
+            await adapter.OpenAsync(resolved.Profile, resolved.Password);
+            var (providerConfig, model) = await Router.ResolveAsync(_providerId);
+            await PlanSvc.RunAsync(providerConfig, model, adapter, 1000);
+            adapter.Dispose();
+        }
+        catch (Exception ex)
+        {
+            PlanSvc.SetRunError(ex.Message);
+        }
+        _busy = false;
+        StateHasChanged();
+    }
+
+    private void DiscardPlan()
+    {
+        PlanSvc.Clear();
+        StateHasChanged();
+    }
 
     private async Task Send()
     {
