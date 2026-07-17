@@ -103,41 +103,15 @@ public sealed class GraphRunService
             var currentNode = string.Empty;
             await foreach (var ev in handle.EventsAsync(ct))
             {
-                switch (ev)
+                // Attribute every event to the step that produced it so the UI can render per-step
+                // status distinctly (Started, Token, Completed, Failed) as the graph runs.
+                currentNode = AttributeEvent(ev, currentNode, outputs, failed, progress, options, out var halt);
+                if (halt)
                 {
-                    case StartedEvent se:
-                        // The StartedEvent Spec carries the graph node id for graph runs.
-                        currentNode = se.Spec;
-                        progress?.Report(new GraphStepEvent(currentNode, PlanStepStatus.Running, currentNode));
-                        break;
-                    case TokenEvent te:
-                        if (!string.IsNullOrEmpty(currentNode))
-                        {
-                            progress?.Report(new GraphStepEvent(currentNode, PlanStepStatus.Running, te.Text));
-                        }
-                        break;
-                    case CompletedEvent ce:
-                        // Attribute the completed output to the node that most recently started.
-                        var id = currentNode;
-                        if (!string.IsNullOrEmpty(id))
-                        {
-                            outputs[id] = ce.Output;
-                            progress?.Report(new GraphStepEvent(id, PlanStepStatus.Completed, ce.Output));
-                        }
-                        break;
-                    case FailedEvent fe:
-                        failed.Add(currentNode);
-                        progress?.Report(new GraphStepEvent(currentNode, PlanStepStatus.Failed, fe.Error));
-                        // When fail-fast is set, an unrecoverable step failure halts the graph cleanly:
-                        // we stop consuming events and surface the reason in the result.
-                        if (options.FailFast)
-                        {
-                            return new GraphRunResult(
-                                plan with { Steps = plan.Steps.Select(s => s with { Status = failed.Contains(s.Id) ? PlanStepStatus.Failed : s.Status }).ToList() },
-                                false,
-                                $"Step {currentNode} failed: {fe.Error}");
-                        }
-                        break;
+                    return new GraphRunResult(
+                        plan with { Steps = plan.Steps.Select(s => s with { Status = failed.Contains(s.Id) ? PlanStepStatus.Failed : s.Status }).ToList() },
+                        false,
+                        $"Step {currentNode} failed: unrecoverable.");
                 }
             }
 
@@ -173,6 +147,52 @@ public sealed class GraphRunService
             _ => $"Perform the step using the {step.Tool} tool and summarize the outcome."
         };
         return $"You are executing one step of an analyst plan. Intent: {step.Intent}. {baseInstruction}";
+    }
+
+    /// <summary>
+    /// Routes a single graph event to the right per-step status update, capturing outputs and recording
+    /// failures. Returns the node id that is currently active and a flag indicating the run must halt
+    /// (fail-fast on an unrecoverable step failure).
+    /// </summary>
+    private static string AttributeEvent(
+        RunEvent ev,
+        string activeNode,
+        Dictionary<string, string> outputs,
+        List<string> failed,
+        IProgress<GraphStepEvent>? progress,
+        GraphRunOptions options,
+        out bool halt)
+    {
+        halt = false;
+        switch (ev)
+        {
+            case StartedEvent se:
+                progress?.Report(new GraphStepEvent(se.Spec, PlanStepStatus.Running, se.Spec));
+                return se.Spec;
+            case TokenEvent te:
+                if (!string.IsNullOrEmpty(activeNode))
+                {
+                    progress?.Report(new GraphStepEvent(activeNode, PlanStepStatus.Running, te.Text));
+                }
+                return activeNode;
+            case CompletedEvent ce:
+                if (!string.IsNullOrEmpty(activeNode))
+                {
+                    outputs[activeNode] = ce.Output;
+                    progress?.Report(new GraphStepEvent(activeNode, PlanStepStatus.Completed, ce.Output));
+                }
+                return activeNode;
+            case FailedEvent fe:
+                failed.Add(activeNode);
+                progress?.Report(new GraphStepEvent(activeNode, PlanStepStatus.Failed, fe.Error));
+                if (options.FailFast)
+                {
+                    halt = true;
+                }
+                return activeNode;
+            default:
+                return activeNode;
+        }
     }
 }
 
