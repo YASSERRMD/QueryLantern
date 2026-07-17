@@ -107,6 +107,13 @@
     <ConfidenceView Score="ChatSvc.LastConfidence" />
 }
 
+@if (ChatSvc.LastResolvedQuestion is not null && ChatSvc.LastResolvedQuestion.WasFollowUp)
+{
+    <div class="alert alert-info py-2 small">
+        Follow-up resolved to: <em>@ChatSvc.LastResolvedQuestion.Resolved</em>
+    </div>
+}
+
 @if (ChatSvc.State == ChatService.ChatState.AwaitingApproval && ChatSvc.Pending is not null)
 {
     <div class="approval card p-3 mb-3 border-warning">

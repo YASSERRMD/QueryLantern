@@ -22,6 +22,7 @@ builder.Services.AddSingleton<SavedAnalysisRepository>();
 builder.Services.AddSingleton<PlanRepository>();
 builder.Services.AddSingleton<SchemaMemoryRepository>();
 builder.Services.AddScoped<QueryLantern.Services.SchemaMemoryService>();
+builder.Services.AddScoped<QueryLantern.Services.ConversationMemoryService>();
 
 // Secret vault encrypts passwords and API keys at rest. The key lives in a local file outside the
 // catalog so the catalog never contains plaintext secrets.
