@@ -34,6 +34,7 @@ public sealed class ChatService
     private readonly CostService _cost;
     private readonly SavedAnalysisRepository _saved;
     private readonly AnswerGroundingService _grounding;
+    private readonly AnswerCriticService _critic;
 
     public List<ChatEntry> Entries { get; } = new();
     public ChatState State { get; private set; } = ChatState.Idle;
@@ -43,6 +44,8 @@ public sealed class ChatService
     public string? LastResultSetJson { get; private set; }
     public string? LastAnswer { get; private set; }
     public GroundingResult? LastGrounding { get; private set; }
+    public CritiqueResult? LastCritique { get; private set; }
+    public string? LastUserQuestion { get; private set; }
 
     private string _costProviderName = "unknown";
     private string _costModel = "unknown";
@@ -51,7 +54,7 @@ public sealed class ChatService
 
     public event Action? Changed;
 
-    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost, SavedAnalysisRepository saved, AnswerGroundingService grounding)
+    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost, SavedAnalysisRepository saved, AnswerGroundingService grounding, AnswerCriticService critic)
     {
         _settings = settings;
         _router = router;
@@ -63,6 +66,7 @@ public sealed class ChatService
         _cost = cost;
         _saved = saved;
         _grounding = grounding;
+        _critic = critic;
     }
 
     public void Reset()
@@ -109,6 +113,7 @@ public sealed class ChatService
         _currentConnectionId = connectionId;
         _currentProviderId = providerId;
         Entries.Add(new ChatEntry("user", userMessage, Array.Empty<string>()));
+        LastUserQuestion = userMessage;
         var assistant = new ChatEntry("assistant", string.Empty, new List<string>());
         Entries.Add(assistant);
         State = ChatState.Running;
@@ -169,6 +174,7 @@ public sealed class ChatService
                         assistant = assistant with { Content = assistant.Content + (string.IsNullOrEmpty(assistant.Content) ? ce.Output : "") };
                         LastAnswer = assistant.Content;
                         LastGrounding = ComputeGrounding(assistant.Content);
+                        LastCritique = _critic.Critique(LastUserQuestion ?? "", assistant.Content, LastGrounding);
                         Changed?.Invoke();
                         break;
                 }
@@ -231,6 +237,7 @@ public sealed class ChatService
         if (!string.IsNullOrEmpty(LastAnswer))
         {
             LastGrounding = ComputeGrounding(LastAnswer);
+            LastCritique = _critic.Critique(LastUserQuestion, LastAnswer, LastGrounding);
         }
         var total = (decimal?)(session.Handle.GetCostTyped()?.TotalUsd) ?? 0m;
         LastCost = total.ToString("C4");
