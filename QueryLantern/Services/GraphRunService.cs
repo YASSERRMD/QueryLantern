@@ -72,18 +72,24 @@ public sealed class GraphRunService
         IDatabaseAdapter adapter,
         int maxRows,
         IProgress<GraphStepEvent>? progress = null,
+        GraphRunOptions options = default,
         CancellationToken ct = default)
     {
         var runtime = new Runtime(provider);
         try
         {
+            // Outputs captured from prior steps, passed forward as typed input to dependent steps.
+            var outputs = new Dictionary<string, string>(StringComparer.Ordinal);
+            var failed = new List<string>();
             // Register the governed read handlers on the shared runtime once so every graph node can
             // call any read tool during the run.
             _toolbox.RegisterReadHandlers(runtime, adapter, maxRows, sql => progress?.Report(new GraphStepEvent("run_query", PlanStepStatus.Running, sql)));
             var nodes = new List<GraphNode>();
             foreach (var step in plan.Steps)
             {
-                var instructions = BuildStepInstructions(step);
+                // Pass each dependency's captured output forward as typed input to this step.
+                var resolvedInput = StepInputResolver.Resolve(step, outputs);
+                var instructions = BuildStepInstructions(step) + resolvedInput;
                 var tools = _toolbox.BuildReadToolSpecs();
                 var spec = new AgentSpec(model, instructions, tools) { MaxSteps = 6 };
                 nodes.Add(new GraphNode(step.Id, NodeKind.Agent, spec));
@@ -94,8 +100,6 @@ public sealed class GraphRunService
             var agent = new Agent(runtime);
             var handle = agent.RunGraph(graph);
 
-            var outputs = new Dictionary<string, string>(StringComparer.Ordinal);
-            var failed = new List<string>();
             var currentNode = string.Empty;
             await foreach (var ev in handle.EventsAsync(ct))
             {
@@ -124,6 +128,15 @@ public sealed class GraphRunService
                     case FailedEvent fe:
                         failed.Add(currentNode);
                         progress?.Report(new GraphStepEvent(currentNode, PlanStepStatus.Failed, fe.Error));
+                        // When fail-fast is set, an unrecoverable step failure halts the graph cleanly:
+                        // we stop consuming events and surface the reason in the result.
+                        if (options.FailFast)
+                        {
+                            return new GraphRunResult(
+                                plan with { Steps = plan.Steps.Select(s => s with { Status = failed.Contains(s.Id) ? PlanStepStatus.Failed : s.Status }).ToList() },
+                                false,
+                                $"Step {currentNode} failed: {fe.Error}");
+                        }
                         break;
                 }
             }
@@ -168,3 +181,39 @@ public sealed class GraphRunService
 /// optional failure reason.
 /// </summary>
 public sealed record GraphRunResult(PlanGraph Plan, bool Succeeded, string? FailureReason);
+
+/// <summary>
+/// Options that tune graph execution. <see cref="FailFast"/> stops the run at the first unrecoverable
+/// step failure instead of continuing independent branches.
+/// </summary>
+public readonly record struct GraphRunOptions
+{
+    public bool FailFast { get; init; }
+}
+
+/// <summary>
+/// Resolves a step's typed inputs by inlining the captured outputs of its dependencies. This is how data
+/// passes forward between steps: a later step receives the earlier step's result as context in its
+/// instructions so the agent can act on real data rather than repeating a query.
+/// </summary>
+public static class StepInputResolver
+{
+    public static string Resolve(PlanStep step, IReadOnlyDictionary<string, string> outputs)
+    {
+        if (step.DependsOn.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var parts = new System.Collections.Generic.List<string>();
+        foreach (var dep in step.DependsOn)
+        {
+            if (outputs.TryGetValue(dep, out var value))
+            {
+                parts.Add($"\nPrior step '{dep}' produced: {value}");
+            }
+        }
+
+        return parts.Count == 0 ? string.Empty : string.Join("\n", parts);
+    }
+}
