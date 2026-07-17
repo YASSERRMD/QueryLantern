@@ -19,5 +19,12 @@ default ports and the connection string shapes each adapter produces.
 The `Options` field on a connection profile is appended verbatim to the generated connection string,
 so you can add engine specific flags such as `sslmode=require` for PostgreSQL.
 
+## Oracle: service name vs SID and TNS
+
+For Oracle the `Database` field holds the service name (the `host:port/service` form). If you need
+to connect by SID instead, put the SID in `Database` and the `Options` field will be used verbatim as
+the `Data Source`, for example `SID=orcl`. You can also paste a full TNS alias into `Options` and
+leave `Database` empty; the adapter prefers `Options` for the data source when it is present.
+
 All reads and writes go through the adapter's parameterised execution path. The adapter never
 string concatenates user values into SQL.
