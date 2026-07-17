@@ -28,13 +28,14 @@ builder.Services.AddSingleton<SettingsService>();
 builder.Services.AddSingleton<SchemaCache>();
 builder.Services.AddSingleton<SchemaService>();
 builder.Services.AddHttpClient<ProviderClient>();
+builder.Services.AddSingleton<ModelRouter>();
 
 // Ancora agent runtime. The provider endpoint is read from configuration so the app stays
 // runnable before a real provider profile is configured in the UI (later phases).
 var baseUrl = builder.Configuration["Ancora:BaseUrl"] ?? "http://localhost:11434/v1";
 var authEnvVar = builder.Configuration["Ancora:AuthEnvVar"] ?? "ANCORA_API_KEY";
 var chatPath = builder.Configuration["Ancora:ChatCompletionsPath"] ?? "/v1/chat/completions";
-builder.Services.AddSingleton(new AncoraRunner(baseUrl, authEnvVar, chatPath));
+builder.Services.AddSingleton<AncoraRunner>();
 
 var app = builder.Build();
 
