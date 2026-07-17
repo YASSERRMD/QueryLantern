@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Ancora;
 using QueryLantern.Adapters;
+using QueryLantern.Data;
 using QueryLantern.Models;
 using QueryLantern.Schema;
 using QueryLantern.Settings;
@@ -31,6 +32,7 @@ public sealed class ChatService
     private readonly ApprovalService _approval;
     private readonly ActivityJournal _journal;
     private readonly CostService _cost;
+    private readonly SavedAnalysisRepository _saved;
 
     public List<ChatEntry> Entries { get; } = new();
     public ChatState State { get; private set; } = ChatState.Idle;
@@ -41,10 +43,12 @@ public sealed class ChatService
 
     private string _costProviderName = "unknown";
     private string _costModel = "unknown";
+    private int _currentConnectionId;
+    private int _currentProviderId;
 
     public event Action? Changed;
 
-    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost)
+    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost, SavedAnalysisRepository saved)
     {
         _settings = settings;
         _router = router;
@@ -54,6 +58,7 @@ public sealed class ChatService
         _approval = approval;
         _journal = journal;
         _cost = cost;
+        _saved = saved;
     }
 
     public void Reset()
@@ -67,8 +72,38 @@ public sealed class ChatService
         Changed?.Invoke();
     }
 
+    /// <summary>
+    /// Persists the current conversation as a named analysis so it can be reopened later.
+    /// </summary>
+    public async Task<int> SaveAsync(string name)
+    {
+        var payload = System.Text.Json.JsonSerializer.Serialize(new SavedAnalysisPayload(
+            _currentConnectionId, _currentProviderId, Entries, LastResultSetJson));
+        return await _saved.InsertAsync(new SavedAnalysis(0, name, payload, DateTime.UtcNow));
+    }
+
+    /// <summary>
+    /// Loads a previously saved conversation into the active chat surface.
+    /// </summary>
+    public void LoadFromPayload(string payload)
+    {
+        var data = System.Text.Json.JsonSerializer.Deserialize<SavedAnalysisPayload>(payload);
+        if (data is null) return;
+        Entries.Clear();
+        Entries.AddRange(data.Entries);
+        _currentConnectionId = data.ConnectionId;
+        _currentProviderId = data.ProviderId;
+        LastResultSetJson = data.ResultJson;
+        State = ChatState.Done;
+        Changed?.Invoke();
+    }
+
+    public sealed record SavedAnalysisPayload(int ConnectionId, int ProviderId, List<ChatEntry> Entries, string? ResultJson);
+
     public async Task SendAsync(string userMessage, int connectionId, int providerId, string? modelOverride = null, CancellationToken ct = default)
     {
+        _currentConnectionId = connectionId;
+        _currentProviderId = providerId;
         Entries.Add(new ChatEntry("user", userMessage, Array.Empty<string>()));
         var assistant = new ChatEntry("assistant", string.Empty, new List<string>());
         Entries.Add(assistant);

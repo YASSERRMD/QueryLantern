@@ -18,6 +18,7 @@ var catalogPath = builder.Configuration["Catalog:Path"] ?? "catalog.db";
 builder.Services.AddSingleton(new CatalogStore(catalogPath));
 builder.Services.AddSingleton<ConnectionRepository>();
 builder.Services.AddSingleton<ProviderRepository>();
+builder.Services.AddSingleton<SavedAnalysisRepository>();
 
 // Secret vault encrypts passwords and API keys at rest. The key lives in a local file outside the
 // catalog so the catalog never contains plaintext secrets.
