@@ -53,6 +53,12 @@ public sealed class SettingsService
 
         return new ProviderConfig(profile.BaseUrl, authEnv, "/v1/chat/completions");
     }
+
+    /// <summary>
+    /// Returns the saved provider profile (without decrypting the key) so callers can read the
+    /// configured model id for override resolution.
+    /// </summary>
+    public Task<ProviderProfile?> GetProviderProfileAsync(int id) => _providers.GetAsync(id);
 }
 
 /// <summary>
