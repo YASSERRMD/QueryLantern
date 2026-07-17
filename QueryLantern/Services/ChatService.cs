@@ -33,6 +33,7 @@ public sealed class ChatService
     private readonly ActivityJournal _journal;
     private readonly CostService _cost;
     private readonly SavedAnalysisRepository _saved;
+    private readonly AnswerGroundingService _grounding;
 
     public List<ChatEntry> Entries { get; } = new();
     public ChatState State { get; private set; } = ChatState.Idle;
@@ -40,6 +41,8 @@ public sealed class ChatService
     public string? LastCost { get; private set; }
     public string? LastError { get; private set; }
     public string? LastResultSetJson { get; private set; }
+    public string? LastAnswer { get; private set; }
+    public GroundingResult? LastGrounding { get; private set; }
 
     private string _costProviderName = "unknown";
     private string _costModel = "unknown";
@@ -48,7 +51,7 @@ public sealed class ChatService
 
     public event Action? Changed;
 
-    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost, SavedAnalysisRepository saved)
+    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost, SavedAnalysisRepository saved, AnswerGroundingService grounding)
     {
         _settings = settings;
         _router = router;
@@ -59,6 +62,7 @@ public sealed class ChatService
         _journal = journal;
         _cost = cost;
         _saved = saved;
+        _grounding = grounding;
     }
 
     public void Reset()
@@ -163,6 +167,9 @@ public sealed class ChatService
                         return; // wait for Approve/Reject
                     case CompletedEvent ce:
                         assistant = assistant with { Content = assistant.Content + (string.IsNullOrEmpty(assistant.Content) ? ce.Output : "") };
+                        LastAnswer = assistant.Content;
+                        LastGrounding = ComputeGrounding(assistant.Content);
+                        Changed?.Invoke();
                         break;
                 }
             }
@@ -221,6 +228,10 @@ public sealed class ChatService
 
     private void Finalize(RunnerSession session, IDatabaseAdapter adapter)
     {
+        if (!string.IsNullOrEmpty(LastAnswer))
+        {
+            LastGrounding = ComputeGrounding(LastAnswer);
+        }
         var total = (decimal?)(session.Handle.GetCostTyped()?.TotalUsd) ?? 0m;
         LastCost = total.ToString("C4");
         _cost.Record(session.Handle.RunId, _costProviderName, _costModel, total);
@@ -228,6 +239,48 @@ public sealed class ChatService
         session.Dispose();
         State = ChatState.Done;
         Changed?.Invoke();
+    }
+
+    private GroundingResult ComputeGrounding(string answer)
+    {
+        var results = new List<QueryResult>();
+        if (!string.IsNullOrEmpty(LastResultSetJson))
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(LastResultSetJson);
+                var root = doc.RootElement;
+                var columns = new List<ColumnMeta>();
+                if (root.TryGetProperty("columns", out var cols))
+                {
+                    foreach (var c in cols.EnumerateArray())
+                    {
+                        var name = c.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                        var type = c.TryGetProperty("dataType", out var t) ? t.GetString() ?? "" : "";
+                        columns.Add(new ColumnMeta(name, type));
+                    }
+                }
+
+                var rows = new List<IReadOnlyList<object?>>();
+                if (root.TryGetProperty("rows", out var rs))
+                {
+                    foreach (var r in rs.EnumerateArray())
+                    {
+                        var row = new List<object?>();
+                        foreach (var v in r.EnumerateArray())
+                        {
+                            row.Add(v.ValueKind == System.Text.Json.JsonValueKind.Null ? null : v.ToString());
+                        }
+                        rows.Add(row);
+                    }
+                }
+
+                results.Add(new QueryResult { Columns = columns, Rows = rows, TruncatedAt = rows.Count });
+            }
+            catch { }
+        }
+
+        return _grounding.Check(answer, results);
     }
 
     private static string BuildInstructions(ConnectionProfile profile)
