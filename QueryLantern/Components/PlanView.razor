@@ -59,6 +59,32 @@
                                 <div class="mt-2"><ResultGrid Json="outp" /></div>
                             }
                         }
+                        @if (PlanSvc.CorrectionAttempts.TryGetValue(step.Id, out var attempts) && attempts.Count > 0)
+                        {
+                            <div class="correction-thread mt-2 pt-2 border-top">
+                                <div class="small text-muted mb-1">Self-correction attempts: @attempts.Count</div>
+                                <ul class="list-unstyled mb-0 small">
+                                    @foreach (var a in attempts)
+                                    {
+                                        <li class="mb-1">
+                                            @if (a.Succeeded)
+                                            {
+                                                <span class="badge bg-success">fixed</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning">failed</span>
+                                            }
+                                            <code>@a.Sql</code>
+                                            @if (!a.Succeeded && !string.IsNullOrEmpty(a.Error))
+                                            {
+                                                <div class="text-danger">@a.Error</div>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
                     </div>
                 }
             </li>
