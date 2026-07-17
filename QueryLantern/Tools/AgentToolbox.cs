@@ -13,6 +13,21 @@ using QueryLantern.Schema;
 /// </summary>
 public sealed class AgentToolbox
 {
+    /// <summary>
+    /// The set of tool names this toolbox can register. Used by the plan validator to confirm a plan
+    /// references only real tools.
+    /// </summary>
+    public static IReadOnlySet<string> KnownToolNames { get; } = new HashSet<string>(System.StringComparer.Ordinal)
+    {
+        "run_query",
+        "list_tables",
+        "describe_table",
+        "sample_rows",
+        "explain_plan",
+        "planner_plan",
+        "propose_write"
+    };
+
     private readonly SchemaCache _schemaCache;
 
     public AgentToolbox(SchemaCache schemaCache)
