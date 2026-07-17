@@ -25,6 +25,13 @@ var keyPath = builder.Configuration["Vault:KeyPath"] ?? "vault.key";
 builder.Services.AddSingleton(new SecretVault(keyPath));
 builder.Services.AddSingleton<ProfileSecrets>();
 builder.Services.AddSingleton<SettingsService>();
+
+// Local Ed25519 identity signs the activity journal. The private key lives in a local file so the
+// journal is verifiable as having been produced by this install.
+var identityPath = builder.Configuration["Identity:KeyPath"] ?? "identity.key";
+builder.Services.AddSingleton(new IdentityService(identityPath));
+var journalPath = builder.Configuration["Journal:Path"] ?? "activity.journal";
+builder.Services.AddSingleton<ActivityJournal>(sp => new ActivityJournal(journalPath, sp.GetRequiredService<IdentityService>()));
 builder.Services.AddSingleton<SchemaCache>();
 builder.Services.AddSingleton<SchemaService>();
 builder.Services.AddHttpClient<ProviderClient>();

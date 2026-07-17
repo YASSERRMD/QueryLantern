@@ -29,6 +29,7 @@ public sealed class ChatService
     private readonly HumanInTheLoop _hitl;
     private readonly SchemaCache _schemaCache;
     private readonly ApprovalService _approval;
+    private readonly ActivityJournal _journal;
 
     public List<ChatEntry> Entries { get; } = new();
     public ChatState State { get; private set; } = ChatState.Idle;
@@ -39,7 +40,7 @@ public sealed class ChatService
 
     public event Action? Changed;
 
-    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval)
+    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal)
     {
         _settings = settings;
         _router = router;
@@ -47,6 +48,7 @@ public sealed class ChatService
         _hitl = hitl;
         _schemaCache = schemaCache;
         _approval = approval;
+        _journal = journal;
     }
 
     public void Reset()
@@ -79,7 +81,11 @@ public sealed class ChatService
             var runner = new AncoraRunner();
             List<ToolSpec> specs = new();
             var session = runner.StartRun(providerConfig, model, BuildInstructions(resolved.Profile),
-                runtime => specs = _toolbox.RegisterTools(runtime, adapter, onRunQueryResult: sql => LastResultSetJson = sql),
+                runtime => specs = _toolbox.RegisterTools(runtime, adapter, onRunQueryResult: sql =>
+                {
+                    LastResultSetJson = sql;
+                    _journal.Append("query", sql);
+                }),
                 specs);
 
             await foreach (var ev in session.Handle.EventsAsync(ct))
@@ -138,6 +144,7 @@ public sealed class ChatService
         try
         {
             await _hitl.ApproveAsync(pending.Session, pending.Adapter, pending.Sql, ct);
+            _journal.Append("write_approved", pending.Sql);
             Finalize(pending.Session, pending.Adapter);
         }
         catch (Exception ex)
@@ -158,6 +165,7 @@ public sealed class ChatService
         try
         {
             await _hitl.RejectAsync(pending.Session, ct);
+            _journal.Append("write_rejected", pending.Sql);
             Finalize(pending.Session, pending.Adapter);
         }
         catch (Exception ex)

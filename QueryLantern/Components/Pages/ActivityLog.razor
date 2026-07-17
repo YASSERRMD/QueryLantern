@@ -1,10 +1,78 @@
 @page "/activity"
-@using Microsoft.AspNetCore.Components.Web
+@using QueryLantern.Services
+@using QueryLantern.Security
+@inject ActivityJournal Journal
+@inject IdentityService Identity
+
 <PageTitle>Activity</PageTitle>
 
 <h2>Activity</h2>
 <p class="text-muted">A tamper-evident journal of what the agent ran and what you approved.</p>
 
-<div class="card p-4">
-    <p class="text-muted mb-0">No activity recorded yet.</p>
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h5>Journal integrity</h5>
+            @if (_entries.Count == 0)
+            {
+                <p class="text-muted mb-0">No activity recorded yet.</p>
+            }
+            else if (_chainValid)
+            {
+                <span class="badge bg-success">Chain valid</span>
+                <span class="text-muted ms-2">@_entries.Count entries, signed by this install.</span>
+            }
+            else
+            {
+                <span class="badge bg-danger">Chain broken — tampering detected</span>
+            }
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card p-3">
+            <h5>Identity</h5>
+            <p class="text-muted mb-1">Public key (Ed25519):</p>
+            <code class="identity-key">@Identity.PublicKeyBase64</code>
+        </div>
+    </div>
 </div>
+
+@if (_entries.Count > 0)
+{
+    <div class="card p-3">
+        <table class="table table-sm">
+            <thead>
+                <tr><th>#</th><th>Time (UTC)</th><th>Type</th><th>Detail</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var e in _entries)
+                {
+                    <tr>
+                        <td>@e.Seq</td>
+                        <td>@e.Timestamp.ToString("u")</td>
+                        <td><span class="badge @TypeBadge(e.Type)">@e.Type</span></td>
+                        <td class="detail">@e.Payload</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<ActivityJournal.JournalEntry> _entries = new();
+    private bool _chainValid;
+
+    protected override void OnInitialized()
+    {
+        _entries = Journal.ReadAll(out _chainValid).ToList();
+    }
+
+    private static string TypeBadge(string type) => type switch
+    {
+        "query" => "bg-info",
+        "write_approved" => "bg-success",
+        "write_rejected" => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+}
