@@ -39,7 +39,9 @@ public sealed class AnswerGroundingService
             }
         }
 
-        return new GroundingResult(claims, false, false);
+        var hasEmptyOrNull = HasEmptyOrNullResult(all);
+
+        return new GroundingResult(claims, hasEmptyOrNull, false);
     }
 
     public IReadOnlyList<string> UntracedFigures(string answer, IReadOnlyList<QueryResult> results)
@@ -89,5 +91,46 @@ public sealed class AnswerGroundingService
         }
 
         return new string(value.Where(c => char.IsDigit(c) || c == '.').ToArray());
+    }
+
+    private static bool HasEmptyOrNullResult(IReadOnlyList<QueryResult> results)
+    {
+        foreach (var r in results)
+        {
+            if (r is null || r.Rows is null || r.Rows.Count == 0)
+            {
+                return true;
+            }
+
+            var allNull = true;
+            foreach (var row in r.Rows)
+            {
+                if (row is null)
+                {
+                    continue;
+                }
+
+                foreach (var cell in row)
+                {
+                    if (cell is not null)
+                    {
+                        allNull = false;
+                        break;
+                    }
+                }
+
+                if (!allNull)
+                {
+                    break;
+                }
+            }
+
+            if (allNull)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
