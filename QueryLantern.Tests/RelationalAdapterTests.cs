@@ -90,4 +90,20 @@ public class RelationalAdapterTests
         Assert.NotEmpty(schema.Tables);
         await adapter.CloseAsync();
     }
+
+    [Fact(Skip = "Set QL_TEST_CLICKHOUSE to a DSN (host:port/db/user/pass) to run.")]
+    public async Task ClickHouse_Connect_Read_Introspect()
+    {
+        var dsn = Environment.GetEnvironmentVariable("QL_TEST_CLICKHOUSE")!;
+        var secret = Environment.GetEnvironmentVariable("QL_TEST_CLICKHOUSE_PW");
+        using var adapter = new QueryLantern.Adapters.ClickHouseAdapter();
+        var profile = ProfileFromDsn(dsn);
+        var test = await adapter.TestConnectionAsync(profile, secret);
+        Assert.True(test.Success, test.Message);
+
+        await adapter.OpenAsync(profile, secret);
+        var schema = await adapter.IntrospectSchemaAsync();
+        Assert.NotEmpty(schema.Tables);
+        await adapter.CloseAsync();
+    }
 }
