@@ -37,6 +37,11 @@ public sealed class PlanService
     /// <summary>Captured output per step id, for the expandable detail view.</summary>
     public IReadOnlyDictionary<string, string> StepOutput => _stepOutput;
 
+    /// <summary>Correction attempts recorded per step id, shown as a visible sub-thread in the UI.</summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<CorrectionAttempt>> CorrectionAttempts => _corrections;
+
+    private readonly Dictionary<string, IReadOnlyList<CorrectionAttempt>> _corrections = new(System.StringComparer.Ordinal);
+
     private readonly Dictionary<string, PlanStepStatus> _stepStatus = new(System.StringComparer.Ordinal);
     private readonly Dictionary<string, string> _stepOutput = new(System.StringComparer.Ordinal);
 
@@ -204,6 +209,7 @@ public sealed class PlanService
         State = PlanRunState.Idle;
         _stepStatus.Clear();
         _stepOutput.Clear();
+        _corrections.Clear();
         Changed?.Invoke();
     }
 
@@ -216,5 +222,33 @@ public sealed class PlanService
         LastError = message;
         State = PlanRunState.Failed;
         Changed?.Invoke();
+    }
+
+    /// <summary>
+    /// Records the correction attempts for a step so the UI can show the self-repair sub-thread. When the
+    /// budget was exhausted, the plan moves to a failed state and the last error is surfaced for the user.
+    /// </summary>
+    public void RecordCorrection(string stepId, CorrectionOutcome outcome)
+    {
+        _corrections[stepId] = outcome.Attempts.ToList();
+        if (outcome.BudgetExhausted)
+        {
+            State = PlanRunState.Failed;
+            LastError = $"Correction budget exhausted for step {stepId}: {outcome.LastError}";
+        }
+        Changed?.Invoke();
+    }
+
+    /// <summary>
+    /// Runs error-driven self-correction for a failing query on a step, using the live adapter and the
+    /// cached schema, and records the attempts for the UI. Returns the outcome (success, final SQL, or
+    /// budget exhausted with the last error for the user to resolve).
+    /// </summary>
+    public CorrectionOutcome TryCorrectStep(string stepId, string sql, QueryLantern.Adapters.IDatabaseAdapter adapter, QueryLantern.Adapters.SchemaModel schema, int maxAttempts = 3)
+    {
+        var corrector = new SelfCorrectionService(new QueryValidator(adapter), new QueryRepairer(schema));
+        var outcome = corrector.Correct(sql, maxAttempts);
+        RecordCorrection(stepId, outcome);
+        return outcome;
     }
 }
