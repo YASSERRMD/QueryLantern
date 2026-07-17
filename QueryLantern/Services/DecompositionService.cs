@@ -55,6 +55,30 @@ public sealed class DecompositionService
     /// </summary>
     public string Compose(IReadOnlyList<string> subAnswers) => _decompose.Compose(subAnswers);
 
+    /// <summary>
+    /// Composes sub-answers that correspond to the decomposition's sub-questions (in order), dropping
+    /// synthesis-step instructions, and returns the final synthesized answer plus the ids of the
+    /// sub-questions that contributed real content.
+    /// </summary>
+    public ComposedAnswer ComposeAnswers(IReadOnlyList<string> subAnswers)
+    {
+        var usedIds = new List<string>();
+        var ordered = new List<string>();
+        for (var i = 0; i < (Current?.SubQuestions.Count ?? 0) && i < subAnswers.Count; i++)
+        {
+            var text = subAnswers[i];
+            if (string.IsNullOrWhiteSpace(text) || text.StartsWith("Synthesize", System.StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            ordered.Add(text);
+            usedIds.Add(Current!.SubQuestions[i].Id);
+        }
+
+        return new ComposedAnswer(_decompose.Compose(ordered), usedIds);
+    }
+
     public void Clear()
     {
         Current = null;
@@ -70,3 +94,8 @@ public sealed record DecompositionResult(
     Decomposition Decomposition,
     IReadOnlyDictionary<string, PlanGraph> SubPlans,
     bool AllSubPlansValid);
+
+/// <summary>
+/// The composed final answer plus the ids of the sub-questions that contributed real content.
+/// </summary>
+public sealed record ComposedAnswer(string Text, IReadOnlyList<string> ContributingSubQuestionIds);
