@@ -74,28 +74,29 @@ public sealed class SqliteAdapter : IDatabaseAdapter, IDisposable
         }
 
         var rows = new List<IReadOnlyList<object?>>();
-        var truncated = 0;
-        while (await reader.ReadAsync(ct) && rows.Count < maxRows)
+        var truncated = false;
+        while (await reader.ReadAsync(ct))
         {
+            if (rows.Count >= maxRows)
+            {
+                truncated = true;
+                break;
+            }
+
             var row = new object?[reader.FieldCount];
             for (var i = 0; i < reader.FieldCount; i++)
             {
                 row[i] = reader.IsDBNull(i) ? null : reader.GetValue(i);
             }
 
-            rows.Add row;
-        }
-
-        if (await reader.ReadAsync(ct))
-        {
-            truncated = rows.Count;
+            rows.Add(row);
         }
 
         return new QueryResult
         {
             Columns = columns,
             Rows = rows,
-            TruncatedAt = truncated > 0 ? truncated : null
+            TruncatedAt = truncated ? maxRows : null
         };
     }
 
