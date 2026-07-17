@@ -1,60 +1,177 @@
+:root {
+    --ql-bg: #0e1116;
+    --ql-panel: #161b22;
+    --ql-panel-2: #1c2230;
+    --ql-border: #2a3140;
+    --ql-text: #d7dde5;
+    --ql-muted: #8b949e;
+    --ql-accent: #4ea1ff;
+    --ql-accent-2: #7ee787;
+    --ql-danger: #ff7b72;
+}
+
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    background: var(--ql-bg);
+    color: var(--ql-text);
+    height: 100%;
 }
 
 a, .btn-link {
-    color: #006bb7;
+    color: var(--ql-accent);
+}
+
+h1, h2, h3 {
+    color: var(--ql-text);
 }
 
 .btn-primary {
     color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    background-color: var(--ql-accent);
+    border-color: var(--ql-accent);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+    box-shadow: 0 0 0 0.1rem var(--ql-bg), 0 0 0 0.25rem var(--ql-accent);
 }
 
 .content {
     padding-top: 1.1rem;
+    padding-bottom: 2rem;
 }
 
-h1:focus {
-    outline: none;
+.page {
+    display: flex;
+    height: 100vh;
 }
 
-.valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+.sidebar {
+    background: var(--ql-panel);
+    border-right: 1px solid var(--ql-border);
+    width: 230px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
 }
 
-.invalid {
-    outline: 1px solid #e50000;
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1.1rem 1.2rem;
+    border-bottom: 1px solid var(--ql-border);
 }
 
-.validation-message {
-    color: #e50000;
+.brand-mark {
+    color: var(--ql-accent-2);
+    font-size: 1.5rem;
+    line-height: 1;
 }
 
-.blazor-error-boundary {
-    background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121;
-    padding: 1rem 1rem 1rem 3.7rem;
-    color: white;
+.brand-name {
+    font-weight: 700;
+    letter-spacing: 0.02em;
 }
 
-    .blazor-error-boundary::after {
-        content: "An error has occurred."
-    }
-
-.darker-border-checkbox.form-check-input {
-    border-color: #929292;
+.nav-scrollable {
+    overflow-y: auto;
+    flex: 1;
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-    color: var(--bs-secondary-color);
-    text-align: end;
+.nav-link {
+    color: var(--ql-muted);
+    border-radius: 6px;
+    margin: 0.15rem 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
 }
 
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-    text-align: start;
+.nav-link:hover {
+    color: var(--ql-text);
+    background: var(--ql-panel-2);
+}
+
+.nav-link.active {
+    color: var(--ql-text);
+    background: var(--ql-panel-2);
+    border-left: 3px solid var(--ql-accent);
+}
+
+.nav-icon {
+    width: 1.2rem;
+    text-align: center;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+}
+
+.top-row {
+    border-bottom: 1px solid var(--ql-border);
+    background: var(--ql-panel);
+    padding: 0.75rem 1.5rem;
+}
+
+.app-tagline {
+    color: var(--ql-muted);
+    font-size: 0.85rem;
+}
+
+.content {
+    flex: 1;
+    padding: 1.5rem;
+}
+
+.card, .panel {
+    background: var(--ql-panel);
+    border: 1px solid var(--ql-border);
+    border-radius: 10px;
+}
+
+.form-control, .form-select {
+    background: var(--ql-panel-2);
+    border: 1px solid var(--ql-border);
+    color: var(--ql-text);
+}
+
+.form-control:focus {
+    background: var(--ql-panel-2);
+    color: var(--ql-text);
+}
+
+.table {
+    color: var(--ql-text);
+}
+
+.table thead th {
+    border-bottom-color: var(--ql-border);
+    color: var(--ql-muted);
+}
+
+.text-muted {
+    color: var(--ql-muted) !important;
+}
+
+#blazor-error-ui {
+    background: var(--ql-danger);
+    color: #111;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.2rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 1rem;
+    top: 0.5rem;
 }
