@@ -12,6 +12,8 @@ public static class AdapterFactory
     public static IDatabaseAdapter Create(DatabaseEngine engine) => engine switch
     {
         DatabaseEngine.Sqlite => new SqliteAdapter(),
+        DatabaseEngine.Postgresql => new PostgresAdapter(),
+        DatabaseEngine.MySql => new MySqlAdapter(),
         _ => throw new NotSupportedException($"Engine {engine} is not supported yet.")
     };
 }

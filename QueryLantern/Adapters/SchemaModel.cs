@@ -13,13 +13,14 @@ public sealed class SchemaModel
 }
 
 /// <summary>
-/// A table with its columns and key information.
+/// A table with its columns and key information. Collections are mutable so adapters can populate
+/// them during introspection.
 /// </summary>
 public sealed record TableModel(
     string Name,
     string Schema,
-    IReadOnlyList<ColumnModel> Columns,
-    IReadOnlyList<string> PrimaryKey);
+    List<ColumnModel> Columns,
+    List<string> PrimaryKey);
 
 /// <summary>
 /// A column with its type and nullability.
