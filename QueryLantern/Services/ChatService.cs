@@ -36,6 +36,7 @@ public sealed class ChatService
     private readonly AnswerGroundingService _grounding;
     private readonly AnswerCriticService _critic;
     private readonly ConfidenceService _confidence;
+    private readonly SchemaMemoryService _memory;
 
     public List<ChatEntry> Entries { get; } = new();
     public ChatState State { get; private set; } = ChatState.Idle;
@@ -56,7 +57,7 @@ public sealed class ChatService
 
     public event Action? Changed;
 
-    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost, SavedAnalysisRepository saved, AnswerGroundingService grounding, AnswerCriticService critic, ConfidenceService confidence)
+    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost, SavedAnalysisRepository saved, AnswerGroundingService grounding, AnswerCriticService critic, ConfidenceService confidence, SchemaMemoryService memory)
     {
         _settings = settings;
         _router = router;
@@ -70,6 +71,7 @@ public sealed class ChatService
         _grounding = grounding;
         _critic = critic;
         _confidence = confidence;
+        _memory = memory;
     }
 
     public void Reset()
@@ -135,7 +137,7 @@ public sealed class ChatService
             _costModel = model;
             var runner = new AncoraRunner();
             List<ToolSpec> specs = new();
-            var session = runner.StartRun(providerConfig, model, BuildInstructions(resolved.Profile),
+            var session = runner.StartRun(providerConfig, model, await BuildInstructions(connectionId, resolved.Profile),
                 runtime => specs = _toolbox.RegisterTools(runtime, adapter, onRunQueryResult: sql =>
                 {
                     LastResultSetJson = sql;
@@ -295,10 +297,14 @@ public sealed class ChatService
         return _grounding.Check(answer, results);
     }
 
-    private static string BuildInstructions(ConnectionProfile profile)
-        => $"You are QueryLantern, a data analyst assistant connected to a {profile.Engine} database named '{profile.Database}'. " +
+    private async Task<string> BuildInstructions(int connectionId, ConnectionProfile profile)
+    {
+        var baseText = $"You are QueryLantern, a data analyst assistant connected to a {profile.Engine} database named '{profile.Database}'. " +
            "Use run_query for read-only questions, list_tables/describe_table/sample_rows/explain_plan to explore the schema, " +
            "and propose_write only when the user explicitly asks to change data. Never invent table or column names.";
+        var memory = await _memory.SummarizeForPromptAsync(connectionId);
+        return string.IsNullOrEmpty(memory) ? baseText : baseText + "\n" + memory;
+    }
 
     private static string ExtractSql(string argumentsJson)
     {
