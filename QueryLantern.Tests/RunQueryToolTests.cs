@@ -34,7 +34,10 @@ public class RunQueryToolTests : IAsyncLifetime
         var tools = new QueryTools(_adapter);
         var json = tools.RunQuery("SELECT id, v FROM t ORDER BY id;");
         Assert.True(json.Contains("\"rowCount\":2"), $"JSON was: {json}");
-        Assert.Contains("\"x\"", json);
+        Assert.Contains("\"columns\"", json);
+        Assert.Contains("\"rows\"", json);
+        Assert.Contains("\"id\"", json);
+        Assert.Contains("\"v\"", json);
     }
 
     [Fact]

@@ -34,6 +34,7 @@ public sealed class ChatService
     public PendingWrite? Pending { get; private set; }
     public string? LastCost { get; private set; }
     public string? LastError { get; private set; }
+    public string? LastResultSetJson { get; private set; }
 
     public event Action? Changed;
 
@@ -53,6 +54,7 @@ public sealed class ChatService
         Pending = null;
         LastCost = null;
         LastError = null;
+        LastResultSetJson = null;
         Changed?.Invoke();
     }
 
@@ -75,7 +77,7 @@ public sealed class ChatService
             var runner = new AncoraRunner();
             List<ToolSpec> specs = new();
             var session = runner.StartRun(providerConfig, model, BuildInstructions(resolved.Profile),
-                runtime => specs = _toolbox.RegisterTools(runtime, adapter),
+                runtime => specs = _toolbox.RegisterTools(runtime, adapter, onRunQueryResult: sql => LastResultSetJson = sql),
                 specs);
 
             await foreach (var ev in session.Handle.EventsAsync(ct))

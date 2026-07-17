@@ -1,0 +1,136 @@
+@using System.Text.Json
+@using System.Globalization
+
+<div class="result-grid">
+    @if (_columns is null || _rows is null)
+    {
+        <p class="text-muted">No result to display.</p>
+    }
+    else
+    {
+        <div class="result-meta text-muted">@_rowCount row(s)</div>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        @foreach (var c in _columns)
+                        {
+                            <th>@c.Name</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _rows)
+                    {
+                        <tr>
+                            @foreach (var cell in row)
+                            {
+                                <td>@Format(cell)</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (_numericColumnIndex >= 0)
+        {
+            <div class="chart-card">
+                <div class="chart-title text-muted">@_columns[_numericColumnIndex].Name</div>
+                <div class="bar-chart">
+                    @for (var i = 0; i < _rows.Count && i < 12; i++)
+                    {
+                        var v = _values[i];
+                        var pct = _max > 0 ? (int)(v / _max * 100) : 0;
+                        <div class="bar-row" title="@Format(_rows[i][_labelIndex])">
+                            <span class="bar-label">@Truncate(Format(_rows[i][_labelIndex]))</span>
+                            <div class="bar-track"><div class="bar-fill" style="width:@pct%"></div></div>
+                            <span class="bar-value">@v.ToString("N0", CultureInfo.InvariantCulture)</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Json { get; set; } = "{}";
+
+    private List<ColumnInfo>? _columns;
+    private List<List<object?>>? _rows;
+    private int _rowCount;
+    private int _numericColumnIndex = -1;
+    private int _labelIndex = 0;
+    private List<double> _values = new();
+    private double _max;
+
+    protected override void OnParametersSet()
+    {
+        _columns = null;
+        _rows = null;
+        _numericColumnIndex = -1;
+        _values = new();
+        _max = 0;
+        try
+        {
+            using var doc = JsonDocument.Parse(Json);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("columns", out var cols) || !root.TryGetProperty("rows", out var rowsEl))
+            {
+                return;
+            }
+
+            _columns = new List<ColumnInfo>();
+            foreach (var c in cols.EnumerateArray())
+            {
+                _columns.Add(new ColumnInfo(c.GetProperty("name").GetString() ?? string.Empty));
+            }
+
+            _rows = new List<List<object?>>();
+            foreach (var r in rowsEl.EnumerateArray())
+            {
+                var row = new List<object?>();
+                foreach (var cell in r.EnumerateArray())
+                {
+                    row.Add(cell.ValueKind == JsonValueKind.Null ? null : cell.ToString());
+                }
+                _rows.Add(row);
+            }
+            _rowCount = _rows.Count;
+
+            // Pick the first numeric (non-first) column for the chart; label is the first column.
+            for (var i = 1; i < _columns.Count; i++)
+            {
+                var sample = _rows.FirstOrDefault()?.Count > i ? _rows[0][i] : null;
+                if (sample is string s && double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out _))
+                {
+                    _numericColumnIndex = i;
+                    break;
+                }
+            }
+
+            if (_numericColumnIndex >= 0)
+            {
+                foreach (var row in _rows)
+                {
+                    var v = row.Count > _numericColumnIndex && double.TryParse(row[_numericColumnIndex]?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : 0;
+                    _values.Add(v);
+                    _max = Math.Max(_max, v);
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            _columns = null;
+            _rows = null;
+        }
+    }
+
+    private static string Format(object? value) => value?.ToString() ?? "NULL";
+
+    private static string Truncate(string s) => s.Length > 14 ? s[..14] + "…" : s;
+
+    private sealed record ColumnInfo(string Name);
+}

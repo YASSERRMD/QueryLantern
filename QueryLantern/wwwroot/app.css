@@ -222,3 +222,53 @@ main {
 .approval {
     border-color: #b58b1a;
 }
+
+.result-grid {
+    margin-top: 0.5rem;
+    border-top: 1px dashed var(--ql-border);
+    padding-top: 0.5rem;
+}
+.result-meta {
+    font-size: 0.75rem;
+    margin-bottom: 0.4rem;
+}
+.chart-card {
+    margin-top: 0.75rem;
+    background: var(--ql-panel-2);
+    border: 1px solid var(--ql-border);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+}
+.chart-title {
+    font-size: 0.75rem;
+    margin-bottom: 0.4rem;
+}
+.bar-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 60px;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+.bar-label {
+    font-size: 0.8rem;
+    color: var(--ql-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.bar-track {
+    background: var(--ql-panel);
+    border-radius: 4px;
+    height: 14px;
+    overflow: hidden;
+}
+.bar-fill {
+    background: linear-gradient(90deg, var(--ql-accent), var(--ql-accent-2));
+    height: 100%;
+}
+.bar-value {
+    font-size: 0.8rem;
+    text-align: right;
+    color: var(--ql-text);
+}
