@@ -62,6 +62,14 @@ public sealed class CatalogStore : IDisposable
                 Payload TEXT NOT NULL,
                 CreatedAt TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS Plans (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ConnectionId INTEGER NOT NULL,
+                Question TEXT NOT NULL,
+                Payload TEXT NOT NULL,
+                CreatedAt TEXT NOT NULL
+            );
             """;
         cmd.ExecuteNonQuery();
     }

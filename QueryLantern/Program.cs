@@ -19,6 +19,7 @@ builder.Services.AddSingleton(new CatalogStore(catalogPath));
 builder.Services.AddSingleton<ConnectionRepository>();
 builder.Services.AddSingleton<ProviderRepository>();
 builder.Services.AddSingleton<SavedAnalysisRepository>();
+builder.Services.AddSingleton<PlanRepository>();
 
 // Secret vault encrypts passwords and API keys at rest. The key lives in a local file outside the
 // catalog so the catalog never contains plaintext secrets.
@@ -50,6 +51,8 @@ var authEnvVar = builder.Configuration["Ancora:AuthEnvVar"] ?? "ANCORA_API_KEY";
 var chatPath = builder.Configuration["Ancora:ChatCompletionsPath"] ?? "/v1/chat/completions";
 builder.Services.AddSingleton<AncoraRunner>();
 builder.Services.AddScoped<QueryLantern.Tools.AgentToolbox>();
+builder.Services.AddScoped<QueryLantern.Tools.PlannerTool>();
+builder.Services.AddScoped<QueryLantern.Services.PlanService>();
 builder.Services.AddScoped<ChatService>();
 
 var app = builder.Build();
