@@ -8,20 +8,23 @@ using Xunit;
 
 public class AncoraRunnerTests
 {
+    private static ProviderConfig TestConfig() => new("http://localhost:11434/v1", "ANCORA_API_KEY");
+
     [Fact]
-    public void Runner_Lifecycle_Produces_RunHandle()
+    public void Runner_Run_Produces_RunHandle()
     {
-        using var runner = new AncoraRunner("http://localhost:11434/v1", "ANCORA_API_KEY");
-        var handle = runner.Run("hy3", "Answer in one sentence.");
-        Assert.NotNull(handle);
-        Assert.False(string.IsNullOrEmpty(handle.RunId));
+        var runner = new AncoraRunner();
+        var session = runner.Run(TestConfig(), "hy3", "Answer in one sentence.");
+        Assert.NotNull(session.Handle);
+        Assert.False(string.IsNullOrEmpty(session.Handle.RunId));
+        session.Dispose();
     }
 
     [Fact]
     public void Runner_StreamAsync_Returns_AsyncEnumerable()
     {
-        using var runner = new AncoraRunner("http://localhost:11434/v1", "ANCORA_API_KEY");
-        var stream = runner.StreamAsync("hy3", "Answer in one sentence.");
+        var runner = new AncoraRunner();
+        var stream = runner.StreamAsync(TestConfig(), "hy3", "Answer in one sentence.");
         Assert.NotNull(stream);
     }
 
@@ -39,11 +42,11 @@ public class AncoraRunnerTests
     {
         var baseUrl = Environment.GetEnvironmentVariable("ANCORA_SMOKE_URL") ?? "http://localhost:11434/v1";
         var authEnv = Environment.GetEnvironmentVariable("ANCORA_SMOKE_AUTH_ENV") ?? "ANCORA_API_KEY";
-        using var runner = new AncoraRunner(baseUrl, authEnv);
+        var runner = new AncoraRunner();
 
         var sawStarted = false;
         var sawTokenOrCompleted = false;
-        await foreach (var ev in runner.StreamAsync("hy3", "Say hello in one word."))
+        await foreach (var ev in runner.StreamAsync(new ProviderConfig(baseUrl, authEnv), "hy3", "Say hello in one word."))
         {
             switch (ev)
             {
