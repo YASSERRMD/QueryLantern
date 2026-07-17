@@ -70,6 +70,14 @@ public sealed class CatalogStore : IDisposable
                 Payload TEXT NOT NULL,
                 CreatedAt TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS SchemaMemory (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ConnectionId INTEGER NOT NULL,
+                Fact TEXT NOT NULL,
+                Kind INTEGER NOT NULL,
+                CreatedAt TEXT NOT NULL
+            );
             """;
         cmd.ExecuteNonQuery();
     }
