@@ -24,12 +24,14 @@ public class SchemaCacheTests : IAsyncLifetime
         _cache = new SchemaCache();
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
         if (File.Exists(_db))
         {
             File.Delete(_db);
         }
+
+        return Task.CompletedTask;
     }
 
     [Fact]
