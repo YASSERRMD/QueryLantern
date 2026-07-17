@@ -25,6 +25,9 @@ public interface IDatabaseAdapter
     /// <summary>Executes a read only query and returns a capped result set.</summary>
     Task<QueryResult> ExecuteReadAsync(string sql, IReadOnlyDictionary<string, object?>? parameters = null, int maxRows = 1000, CancellationToken ct = default);
 
+    /// <summary>Introspects the connected database and returns a normalized schema model.</summary>
+    Task<SchemaModel> IntrospectSchemaAsync(CancellationToken ct = default);
+
     /// <summary>Executes a mutating statement. Only called after explicit human approval.</summary>
     Task<int> ExecuteWriteAsync(string sql, IReadOnlyDictionary<string, object?>? parameters = null, CancellationToken ct = default);
 }
