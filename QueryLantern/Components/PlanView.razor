@@ -1,0 +1,95 @@
+@namespace QueryLantern.Components
+@using QueryLantern.Models
+@using QueryLantern.Services
+@inject PlanService PlanSvc
+
+<div class="plan-card card p-3 mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">Analysis plan</h5>
+        @if (PlanSvc.State == PlanService.PlanRunState.AwaitingApproval)
+        {
+            <span class="badge bg-info">awaiting approval</span>
+        }
+        else if (PlanSvc.State == PlanService.PlanRunState.Running)
+        {
+            <span class="badge bg-primary">running</span>
+        }
+        else if (PlanSvc.State == PlanService.PlanRunState.Done)
+        {
+            <span class="badge bg-success">done</span>
+        }
+        else if (PlanSvc.State == PlanService.PlanRunState.Failed)
+        {
+            <span class="badge bg-danger">failed</span>
+        }
+    </div>
+
+    @if (PlanSvc.LastValidation is { IsValid: false })
+    {
+        <div class="alert alert-warning py-2">
+            Plan is invalid: @string.Join("; ", PlanSvc.LastValidation.Errors)
+        </div>
+    }
+
+    <ol class="plan-steps list-unstyled mb-0">
+        @foreach (var step in PlanSvc.Current?.Steps ?? Array.Empty<PlanStep>())
+        {
+            var status = PlanSvc.StepStatus.TryGetValue(step.Id, out var s) ? s : PlanStepStatus.Pending;
+            <li class="plan-step mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="step-badge @StatusClass(status)">@StatusLabel(status)</span>
+                    <button class="btn btn-sm btn-link p-0 text-start text-body" @onclick="@(() => Toggle(step.Id))">
+                        <strong>@step.Id</strong>: @step.Intent
+                    </button>
+                </div>
+                @if (_expanded.Contains(step.Id))
+                {
+                    <div class="step-detail ms-4 small text-muted border-start ps-2">
+                        <div><b>Tool:</b> @step.Tool</div>
+                        @if (!string.IsNullOrEmpty(step.Inputs))
+                        {
+                            <div><b>Input:</b> <code>@step.Inputs</code></div>
+                        }
+                        @if (PlanSvc.StepOutput.TryGetValue(step.Id, out var outp))
+                        {
+                            <div><b>Output:</b> <span class="step-output">@outp</span></div>
+                        }
+                    </div>
+                }
+            </li>
+        }
+    </ol>
+
+    @if (PlanSvc.Current is not null && !string.IsNullOrEmpty(PlanSvc.Current.Rationale))
+    {
+        <p class="text-muted small mb-0 mt-2">@PlanSvc.Current.Rationale</p>
+    }
+</div>
+
+@code {
+    private readonly HashSet<string> _expanded = new(System.StringComparer.Ordinal);
+
+    private void Toggle(string id)
+    {
+        if (_expanded.Contains(id)) _expanded.Remove(id);
+        else _expanded.Add(id);
+    }
+
+    private static string StatusClass(PlanStepStatus status) => status switch
+    {
+        PlanStepStatus.Pending => "bg-secondary",
+        PlanStepStatus.Running => "bg-primary",
+        PlanStepStatus.Completed => "bg-success",
+        PlanStepStatus.Failed => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private static string StatusLabel(PlanStepStatus status) => status switch
+    {
+        PlanStepStatus.Pending => "pending",
+        PlanStepStatus.Running => "running",
+        PlanStepStatus.Completed => "done",
+        PlanStepStatus.Failed => "failed",
+        _ => "pending"
+    };
+}
