@@ -97,12 +97,24 @@
     <div class="text-muted mt-2">Estimated cost: @ChatSvc.LastCost</div>
 }
 
+<div class="saved-row d-flex gap-2 mt-3 align-items-center">
+    <input class="form-control" style="max-width:280px" placeholder="Name this analysis" @bind="_saveName" />
+    <button class="btn btn-outline-secondary" @onclick="Save" disabled="@(_busy || ChatSvc.Entries.Count == 0)">Save analysis</button>
+    @if (ChatSvc.LastResultSetJson is not null)
+    {
+        var csv = QueryLantern.Tools.CsvExporter.ToCsv(ChatSvc.LastResultSetJson);
+        <a class="btn btn-outline-secondary" href="@("data:text/csv;base64," + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(csv)))" download="result.csv">Export CSV</a>
+    }
+</div>
+}
+
 @code {
     private List<ConnectionProfile> _connections = new();
     private List<ProviderProfile> _providers = new();
     private int _connectionId;
     private int _providerId;
     private string _draft = string.Empty;
+    private string _saveName = string.Empty;
     private bool _busy;
 
     protected override async Task OnInitializedAsync()
@@ -150,6 +162,14 @@
     {
         ChatSvc.Reset();
         _busy = false;
+    }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_saveName)) _saveName = $"Analysis {DateTime.Now:yyyy-MM-dd HH:mm}";
+        await ChatSvc.SaveAsync(_saveName);
+        _saveName = string.Empty;
+        StateHasChanged();
     }
 
     private void OnKey(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)

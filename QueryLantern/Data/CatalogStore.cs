@@ -55,6 +55,13 @@ public sealed class CatalogStore : IDisposable
                 KeyRef TEXT NOT NULL,
                 CreatedAt TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS SavedAnalyses (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL,
+                Payload TEXT NOT NULL,
+                CreatedAt TEXT NOT NULL
+            );
             """;
         cmd.ExecuteNonQuery();
     }
