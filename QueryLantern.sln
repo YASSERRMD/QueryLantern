@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QueryLantern", "QueryLantern\QueryLantern.csproj", "{1AED9FAA-4008-4920-9F7D-893202875565}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QueryLantern.Tests", "QueryLantern.Tests\QueryLantern.Tests.csproj", "{24536CAF-1CED-4497-B3DA-F766E8496FBF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,18 @@ Global
 		{1AED9FAA-4008-4920-9F7D-893202875565}.Release|x64.Build.0 = Release|Any CPU
 		{1AED9FAA-4008-4920-9F7D-893202875565}.Release|x86.ActiveCfg = Release|Any CPU
 		{1AED9FAA-4008-4920-9F7D-893202875565}.Release|x86.Build.0 = Release|Any CPU
+		{24536CAF-1CED-4497-B3DA-F766E8496FBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24536CAF-1CED-4497-B3DA-F766E8496FBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24536CAF-1CED-4497-B3DA-F766E8496FBF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{24536CAF-1CED-4497-B3DA-F766E8496FBF}.Debug|x64.Build.0 = Debug|Any CPU
+		{24536CAF-1CED-4497-B3DA-F766E8496FBF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{24536CAF-1CED-4497-B3DA-F766E8496FBF}.Debug|x86.Build.0 = Debug|Any CPU
+		{24536CAF-1CED-4497-B3DA-F766E8496FBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24536CAF-1CED-4497-B3DA-F766E8496FBF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{24536CAF-1CED-4497-B3DA-F766E8496FBF}.Release|x64.ActiveCfg = Release|Any CPU
+		{24536CAF-1CED-4497-B3DA-F766E8496FBF}.Release|x64.Build.0 = Release|Any CPU
+		{24536CAF-1CED-4497-B3DA-F766E8496FBF}.Release|x86.ActiveCfg = Release|Any CPU
+		{24536CAF-1CED-4497-B3DA-F766E8496FBF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

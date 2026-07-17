@@ -14,6 +14,8 @@ public static class AdapterFactory
         DatabaseEngine.Sqlite => new SqliteAdapter(),
         DatabaseEngine.Postgresql => new PostgresAdapter(),
         DatabaseEngine.MySql => new MySqlAdapter(),
+        DatabaseEngine.SqlServer => new SqlServerAdapter(),
+        DatabaseEngine.Oracle => new OracleAdapter(),
         _ => throw new NotSupportedException($"Engine {engine} is not supported yet.")
     };
 }

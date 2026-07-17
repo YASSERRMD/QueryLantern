@@ -58,4 +58,36 @@ public class RelationalAdapterTests
         Assert.NotEmpty(schema.Tables);
         await adapter.CloseAsync();
     }
+
+    [Fact(Skip = "Set QL_TEST_SQLSERVER to a DSN (host:port/db/user/pass) to run.")]
+    public async Task SqlServer_Connect_Read_Introspect()
+    {
+        var dsn = Environment.GetEnvironmentVariable("QL_TEST_SQLSERVER")!;
+        var secret = Environment.GetEnvironmentVariable("QL_TEST_SQLSERVER_PW");
+        using var adapter = new QueryLantern.Adapters.SqlServerAdapter();
+        var profile = ProfileFromDsn(dsn);
+        var test = await adapter.TestConnectionAsync(profile, secret);
+        Assert.True(test.Success, test.Message);
+
+        await adapter.OpenAsync(profile, secret);
+        var schema = await adapter.IntrospectSchemaAsync();
+        Assert.NotEmpty(schema.Tables);
+        await adapter.CloseAsync();
+    }
+
+    [Fact(Skip = "Set QL_TEST_ORACLE to a DSN (host:port/service/user/pass) to run.")]
+    public async Task Oracle_Connect_Read_Introspect()
+    {
+        var dsn = Environment.GetEnvironmentVariable("QL_TEST_ORACLE")!;
+        var secret = Environment.GetEnvironmentVariable("QL_TEST_ORACLE_PW");
+        using var adapter = new QueryLantern.Adapters.OracleAdapter();
+        var profile = ProfileFromDsn(dsn);
+        var test = await adapter.TestConnectionAsync(profile, secret);
+        Assert.True(test.Success, test.Message);
+
+        await adapter.OpenAsync(profile, secret);
+        var schema = await adapter.IntrospectSchemaAsync();
+        Assert.NotEmpty(schema.Tables);
+        await adapter.CloseAsync();
+    }
 }
