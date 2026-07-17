@@ -1,15 +1,242 @@
 @page "/connections"
-@using Microsoft.AspNetCore.Components.Web
-@using Microsoft.AspNetCore.Components.Web.Virtualization
+@using Microsoft.AspNetCore.Components.Forms
+@using QueryLantern.Adapters
+@using QueryLantern.Data
+@using QueryLantern.Models
+@using QueryLantern.Security
+@inject ConnectionRepository ConnectionRepo
+@inject SecretVault Vault
 
 <PageTitle>Connections</PageTitle>
 
 <h2>Connections</h2>
-<p class="text-muted">Manage the databases QueryLantern can talk to.</p>
+<p class="text-muted">Manage the databases QueryLantern can talk to. Passwords are encrypted at rest.</p>
 
-<div id="connections-host">
-    @* Populated in the connections manager UI phase. *@
-    <div class="card p-4">
-        <p class="text-muted mb-0">No connections yet. Add one to get started.</p>
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card p-3">
+            <h4>@(_editing is null ? "Add connection" : $"Edit: {_editing.Name}")</h4>
+            <EditForm EditContext="_editContext" OnValidSubmit="SaveAsync">
+                <DataAnnotationsValidator />
+                <div class="mb-2">
+                    <label class="form-label">Name</label>
+                    <InputText class="form-control" @bind-Value="_model.Name" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Engine</label>
+                    <InputSelect class="form-select" @bind-Value="_model.Engine">
+                        @foreach (var e in Enum.GetValues<DatabaseEngine>())
+                        {
+                            <option value="@e">@e</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Host</label>
+                    <InputText class="form-control" @bind-Value="_model.Host" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Port</label>
+                    <InputNumber class="form-control" @bind-Value="_model.Port" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Database</label>
+                    <InputText class="form-control" @bind-Value="_model.Database" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Username</label>
+                    <InputText class="form-control" @bind-Value="_model.Username" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Password @(_editing is not null ? "(leave blank to keep)" : "")</label>
+                    <InputText type="password" class="form-control" @bind-Value="_model.Password" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Options (engine specific)</label>
+                    <InputText class="form-control" @bind-Value="_model.Options" />
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="TestAsync">Test</button>
+                    @if (_editing is not null)
+                    {
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CancelEdit">Cancel</button>
+                    }
+                </div>
+            </EditForm>
+            @if (_testResult is not null)
+            {
+                <div class="mt-2 alert @(_testOk ? "alert-success" : "alert-danger")">@_testResult</div>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card p-3">
+            <h4>Saved connections</h4>
+            @if (_list.Count == 0)
+            {
+                <p class="text-muted mb-0">No connections yet.</p>
+            }
+            else
+            {
+                <table class="table">
+                    <thead><tr><th>Name</th><th>Engine</th><th>Host</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var c in _list)
+                        {
+                            <tr>
+                                <td>@c.Name</td>
+                                <td>@c.Engine</td>
+                                <td>@c.Host</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartEdit(c)">Edit</button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(c)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
     </div>
 </div>
+
+@code {
+    private List<ConnectionProfile> _list = new();
+    private ConnectionProfile? _editing;
+    private ConnectionFormModel _model = new();
+    private EditContext _editContext = null!;
+    private string? _error;
+    private string? _testResult;
+    private bool _testOk;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _editContext = new EditContext(_model);
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync() => _list = (await ConnectionRepo.ListAsync()).ToList();
+
+    private void StartEdit(ConnectionProfile c)
+    {
+        _editing = c;
+        _model = new ConnectionFormModel
+        {
+            Name = c.Name,
+            Engine = c.Engine,
+            Host = c.Host,
+            Port = c.Port,
+            Database = c.Database,
+            Username = c.Username,
+            Options = c.Options
+        };
+        _editContext = new EditContext(_model);
+        _testResult = null;
+    }
+
+    private void CancelEdit()
+    {
+        _editing = null;
+        _model = new ConnectionFormModel();
+        _editContext = new EditContext(_model);
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            var secretRef = _editing?.SecretRef ?? string.Empty;
+            if (!string.IsNullOrEmpty(_model.Password))
+            {
+                secretRef = Vault.Encrypt(_model.Password);
+            }
+
+            var profile = new ConnectionProfile
+            {
+                Id = _editing?.Id ?? 0,
+                Name = _model.Name,
+                Engine = _model.Engine,
+                Host = _model.Host,
+                Port = _model.Port,
+                Database = _model.Database,
+                Username = _model.Username,
+                SecretRef = secretRef,
+                Options = _model.Options
+            };
+
+            if (_editing is null)
+            {
+                await ConnectionRepo.InsertAsync(profile);
+            }
+            else
+            {
+                await ConnectionRepo.UpdateAsync(profile);
+            }
+
+            CancelEdit();
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task TestAsync()
+    {
+        _testResult = null;
+        try
+        {
+            var secretRef = _editing?.SecretRef ?? string.Empty;
+            var password = !string.IsNullOrEmpty(_model.Password) ? _model.Password
+                : (!string.IsNullOrEmpty(secretRef) ? Vault.Decrypt(secretRef) : null);
+            var profile = new ConnectionProfile
+            {
+                Name = _model.Name,
+                Engine = _model.Engine,
+                Host = _model.Host,
+                Port = _model.Port,
+                Database = _model.Database,
+                Username = _model.Username,
+                SecretRef = secretRef,
+                Options = _model.Options
+            };
+            using var adapter = AdapterFactory.Create(profile.Engine);
+            await adapter.OpenAsync(profile, password);
+            await adapter.ExecuteReadAsync("SELECT 1");
+            _testOk = true;
+            _testResult = "Connection succeeded.";
+        }
+        catch (Exception ex)
+        {
+            _testOk = false;
+            _testResult = $"Connection failed: {ex.Message}";
+        }
+    }
+
+    private async Task DeleteAsync(ConnectionProfile c)
+    {
+        await ConnectionRepo.DeleteAsync(c.Id);
+        if (_editing?.Id == c.Id) CancelEdit();
+        await RefreshAsync();
+    }
+
+    public sealed class ConnectionFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public DatabaseEngine Engine { get; set; } = DatabaseEngine.Sqlite;
+        public string Host { get; set; } = string.Empty;
+        public int Port { get; set; }
+        public string Database { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string Options { get; set; } = string.Empty;
+    }
+}
