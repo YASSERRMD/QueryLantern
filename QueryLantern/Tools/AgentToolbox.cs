@@ -26,6 +26,7 @@ public sealed class AgentToolbox
         "explain_plan",
         "planner_plan",
         "decompose_question",
+        "dry_run_query",
         "propose_write"
     };
 
@@ -79,11 +80,19 @@ public sealed class AgentToolbox
         ToolRegistry.Register(runtime, "run_query", "Execute a read-only SQL query against the active connection and return the rows", input =>
         {
             var sql = input.TryGetProperty("sql", out var sqlEl) ? sqlEl.GetString() ?? string.Empty : string.Empty;
-            var result = queryTools.RunQuery(sql);
+            var result = queryTools.RunQueryValidated(sql);
             onRunQueryResult?.Invoke(result);
             return result;
         });
         specs.Add(new ToolSpec("run_query", "Execute a read-only SQL query against the active connection and return the rows", sqlInput));
+
+        var validator = new QueryLantern.Services.QueryValidator(adapter);
+        ToolRegistry.Register(runtime, "dry_run_query", "Validate a SELECT by compiling it (EXPLAIN) without executing. Returns valid or the engine error.", input =>
+        {
+            var sql = input.TryGetProperty("sql", out var sqlEl) ? sqlEl.GetString() ?? string.Empty : string.Empty;
+            return validator.ToFeedback(sql);
+        });
+        specs.Add(new ToolSpec("dry_run_query", "Validate a SELECT by compiling it (EXPLAIN) without executing. Returns valid or the engine error.", sqlInput));
 
         var tableInput = new ToolInputSchema(
             "object",
