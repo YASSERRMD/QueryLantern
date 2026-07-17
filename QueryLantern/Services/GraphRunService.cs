@@ -111,7 +111,8 @@ public sealed class GraphRunService
                     return new GraphRunResult(
                         plan with { Steps = plan.Steps.Select(s => s with { Status = failed.Contains(s.Id) ? PlanStepStatus.Failed : s.Status }).ToList() },
                         false,
-                        $"Step {currentNode} failed: unrecoverable.");
+                        $"Step {currentNode} failed: unrecoverable.",
+                        failed);
                 }
             }
 
@@ -122,7 +123,8 @@ public sealed class GraphRunService
             return new GraphRunResult(
                 plan with { Steps = updatedSteps },
                 failed.Count == 0,
-                failed.Count == 0 ? null : string.Join("; ", failed.Select(f => $"Step {f} failed")));
+                failed.Count == 0 ? null : string.Join("; ", failed.Select(f => $"Step {f} failed")),
+                failed);
         }
         catch (Exception ex)
         {
@@ -197,10 +199,18 @@ public sealed class GraphRunService
 }
 
 /// <summary>
-/// The outcome of running a plan graph: the plan with captured step outputs and a status flag plus an
-/// optional failure reason.
+/// The outcome of running a plan graph: the plan with captured step outputs, a status flag, the ids of
+/// any steps that failed (so the UI can highlight them), and an optional failure reason.
 /// </summary>
-public sealed record GraphRunResult(PlanGraph Plan, bool Succeeded, string? FailureReason);
+public sealed record GraphRunResult(
+    PlanGraph Plan,
+    bool Succeeded,
+    string? FailureReason,
+    IReadOnlyList<string> FailedStepIds)
+{
+    public GraphRunResult(PlanGraph plan, bool succeeded, string? failureReason)
+        : this(plan, succeeded, failureReason, System.Array.Empty<string>()) { }
+}
 
 /// <summary>
 /// Options that tune graph execution. <see cref="FailFast"/> stops the run at the first unrecoverable
