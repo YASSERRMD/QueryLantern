@@ -1,9 +1,60 @@
 @page "/cost"
+@using QueryLantern.Services
+@inject CostService CostSvc
+
 <PageTitle>Cost</PageTitle>
 
-<h2>Cost & Usage</h2>
-<p class="text-muted">Track token usage and spend per run.</p>
+<h2>Cost &amp; Usage</h2>
+<p class="text-muted">Estimated spend across all runs. Costs are approximate, based on provider-reported totals.</p>
 
-<div class="card p-4">
-    <p class="text-muted mb-0">No usage recorded yet.</p>
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h5>Total spend</h5>
+            <div class="big-number">@_total.ToString("C4")</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h5>Runs</h5>
+            <div class="big-number">@_records.Count</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card p-3">
+            <h5>Avg / run</h5>
+            <div class="big-number">@(_records.Count == 0 ? "$0.0000" : (_total / _records.Count).ToString("C4"))</div>
+        </div>
+    </div>
 </div>
+
+@if (_records.Count > 0)
+{
+    <div class="card p-3">
+        <table class="table table-sm">
+            <thead><tr><th>Time (UTC)</th><th>Provider</th><th>Model</th><th>Cost</th></tr></thead>
+            <tbody>
+                @foreach (var r in _records.OrderByDescending(r => r.Timestamp))
+                {
+                    <tr>
+                        <td>@r.Timestamp.ToString("u")</td>
+                        <td>@r.Provider</td>
+                        <td>@r.Model</td>
+                        <td>@r.TotalUsd.ToString("C4")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<CostService.CostRecord> _records = new();
+    private decimal _total;
+
+    protected override void OnInitialized()
+    {
+        _records = CostSvc.ReadAll().ToList();
+        _total = CostSvc.TotalUsd();
+    }
+}
