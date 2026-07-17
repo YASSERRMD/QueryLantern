@@ -26,6 +26,8 @@ TestResults/
 *.sqlite3
 App_Data/
 vault.key
+identity.key
+activity.journal
 catalog.db
 
 # Logs

@@ -272,3 +272,21 @@ main {
     text-align: right;
     color: var(--ql-text);
 }
+
+.identity-key {
+    display: block;
+    word-break: break-all;
+    background: var(--ql-panel-2);
+    border: 1px solid var(--ql-border);
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+    color: var(--ql-accent-2);
+}
+td.detail {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8rem;
+    color: var(--ql-text);
+    max-width: 0;
+    overflow-wrap: anywhere;
+}
