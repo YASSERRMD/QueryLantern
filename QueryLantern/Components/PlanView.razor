@@ -80,11 +80,21 @@
                     var sql = ExtractSql(qs.Inputs);
                     var rows = PlanSvc.StepOutput.TryGetValue(qs.Id, out var o) && o.Contains("\"rowCount\"")
                         ? ExtractRowCount(o) : (int?)null;
+                    var rejected = PlanSvc.StepOutput.TryGetValue(qs.Id, out var outp) && outp.Contains("\"valid\":false");
                     <li class="mb-1">
                         <code>@qs.Id</code>: @sql
-                        @if (rows.HasValue)
+                        @if (rejected)
                         {
+                            <span class="badge bg-danger ms-1" title="@ExtractError(outp)">rejected</span>
+                        }
+                        else if (rows.HasValue)
+                        {
+                            <span class="badge bg-success ms-1">validated</span>
                             <span class="badge bg-light text-dark ms-1">@rows rows</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary ms-1">pending</span>
                         }
                     </li>
                 }
@@ -134,6 +144,20 @@
         }
         catch { }
         return 0;
+    }
+
+    private static string ExtractError(string output)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(output);
+            if (doc.RootElement.TryGetProperty("error", out var el))
+            {
+                return el.GetString() ?? string.Empty;
+            }
+        }
+        catch { }
+        return string.Empty;
     }
 
     private static string StatusClass(PlanStepStatus status) => status switch
