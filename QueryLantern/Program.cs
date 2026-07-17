@@ -36,6 +36,7 @@ var baseUrl = builder.Configuration["Ancora:BaseUrl"] ?? "http://localhost:11434
 var authEnvVar = builder.Configuration["Ancora:AuthEnvVar"] ?? "ANCORA_API_KEY";
 var chatPath = builder.Configuration["Ancora:ChatCompletionsPath"] ?? "/v1/chat/completions";
 builder.Services.AddSingleton<AncoraRunner>();
+builder.Services.AddScoped<QueryLantern.Tools.AgentToolbox>();
 
 var app = builder.Build();
 

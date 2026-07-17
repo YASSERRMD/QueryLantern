@@ -29,17 +29,20 @@ public sealed class AncoraRunner
     /// <summary>
     /// Starts a run and streams its events: StartedEvent, TokenEvent, ToolCallEvent, SuspendedEvent,
     /// ResumedEvent, FailedEvent, and CompletedEvent. The runtime is created for the run and disposed
-    /// once the stream completes.
+    /// once the stream completes. The optional <paramref name="registerTools"/> callback registers
+    /// governed tools on the runtime before the run starts.
     /// </summary>
     public async IAsyncEnumerable<RunEvent> StreamAsync(
         ProviderConfig provider,
         string model,
         string instructions,
-        AgentSpec? baseSpec = null,
+        Action<Runtime>? registerTools = null,
+        IReadOnlyList<ToolSpec>? tools = null,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         using var runtime = new Runtime(provider);
-        var spec = baseSpec ?? new AgentSpec(model, instructions, new List<ToolSpec>());
+        registerTools?.Invoke(runtime);
+        var spec = new AgentSpec(model, instructions, tools is null ? new List<ToolSpec>() : tools.ToList());
         var agent = new Agent(runtime);
         var handle = agent.Run(spec);
         await foreach (var ev in handle.EventsAsync(cancellationToken))
