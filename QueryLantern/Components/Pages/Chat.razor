@@ -92,6 +92,11 @@
     <ResultGrid Json="ChatSvc.LastResultSetJson" />
 }
 
+@if (ChatSvc.LastGrounding is not null && !string.IsNullOrEmpty(ChatSvc.LastAnswer))
+{
+    <GroundingView Answer="ChatSvc.LastAnswer" Result="ChatSvc.LastGrounding" />
+}
+
 @if (ChatSvc.State == ChatService.ChatState.AwaitingApproval && ChatSvc.Pending is not null)
 {
     <div class="approval card p-3 mb-3 border-warning">
