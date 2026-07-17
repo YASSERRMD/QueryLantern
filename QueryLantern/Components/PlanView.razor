@@ -1,5 +1,6 @@
 @namespace QueryLantern.Components
 @using QueryLantern.Models
+@using QueryLantern.Adapters
 @using QueryLantern.Services
 @inject PlanService PlanSvc
 
@@ -53,12 +54,43 @@
                         @if (PlanSvc.StepOutput.TryGetValue(step.Id, out var outp))
                         {
                             <div><b>Output:</b> <span class="step-output">@outp</span></div>
+                            @if (step.Tool == "run_query" && outp.Contains("\"rows\""))
+                            {
+                                <div class="mt-2"><ResultGrid Json="outp" /></div>
+                            }
                         }
                     </div>
                 }
             </li>
         }
     </ol>
+
+    @{
+        var querySteps = (PlanSvc.Current?.Steps ?? Array.Empty<PlanStep>())
+            .Where(s => s.Tool == "run_query")
+            .ToList();
+    }
+    @if (querySteps.Count > 0)
+    {
+        <div class="queries-summary mt-2 pt-2 border-top">
+            <div class="small text-muted mb-1">Queries in this analysis: @querySteps.Count</div>
+            <ul class="list-unstyled mb-0 small">
+                @foreach (var qs in querySteps)
+                {
+                    var sql = ExtractSql(qs.Inputs);
+                    var rows = PlanSvc.StepOutput.TryGetValue(qs.Id, out var o) && o.Contains("\"rowCount\"")
+                        ? ExtractRowCount(o) : (int?)null;
+                    <li class="mb-1">
+                        <code>@qs.Id</code>: @sql
+                        @if (rows.HasValue)
+                        {
+                            <span class="badge bg-light text-dark ms-1">@rows rows</span>
+                        }
+                    </li>
+                }
+            </ul>
+        </div>
+    }
 
     @if (PlanSvc.Current is not null && !string.IsNullOrEmpty(PlanSvc.Current.Rationale))
     {
@@ -73,6 +105,35 @@
     {
         if (_expanded.Contains(id)) _expanded.Remove(id);
         else _expanded.Add(id);
+    }
+
+    private static string ExtractSql(string? inputs)
+    {
+        if (string.IsNullOrEmpty(inputs)) return "(not set)";
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(inputs);
+            if (doc.RootElement.TryGetProperty("sql", out var el))
+            {
+                return el.GetString() ?? "(not set)";
+            }
+        }
+        catch { }
+        return inputs;
+    }
+
+    private static int ExtractRowCount(string output)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(output);
+            if (doc.RootElement.TryGetProperty("rowCount", out var el))
+            {
+                return el.GetInt32();
+            }
+        }
+        catch { }
+        return 0;
     }
 
     private static string StatusClass(PlanStepStatus status) => status switch
