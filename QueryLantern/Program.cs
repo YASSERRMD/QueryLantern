@@ -55,6 +55,7 @@ builder.Services.AddScoped<QueryLantern.Tools.PlannerTool>();
 builder.Services.AddScoped<QueryLantern.Services.GraphRunService>();
 builder.Services.AddScoped<QueryLantern.Services.OrchestrationService>();
 builder.Services.AddScoped<QueryLantern.Services.AnswerGroundingService>();
+builder.Services.AddScoped<QueryLantern.Services.AnswerCriticService>();
 builder.Services.AddScoped<QueryLantern.Services.DecompositionService>();
 builder.Services.AddScoped<QueryLantern.Services.PlanService>();
 builder.Services.AddScoped<ChatService>();
