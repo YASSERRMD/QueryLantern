@@ -1,0 +1,29 @@
+@namespace QueryLantern.Components
+@using QueryLantern.Services
+
+@if (Score is not null)
+{
+    var badge = Score.Level switch
+    {
+        ConfidenceLevel.High => "bg-success",
+        ConfidenceLevel.Medium => "bg-warning text-dark",
+        _ => "bg-danger"
+    };
+    <div class="confidence-card card p-2 mb-3">
+        <span class="badge @badge">Confidence: @Score.Level (@(Score.Score.ToString("0.00")))</span>
+        @if (Score.ShouldDisclaim)
+        {
+            <span class="text-danger small ms-2">Low confidence &mdash; I am not sure. Treat this answer as a guess.</span>
+        }
+        <div class="small mt-1">
+            @foreach (var reason in Score.Reasons)
+            {
+                <div>&bull; @reason</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public required ConfidenceScore Score { get; set; }
+}
