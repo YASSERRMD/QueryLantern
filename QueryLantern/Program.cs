@@ -1,5 +1,6 @@
 using QueryLantern.Components;
 using QueryLantern.Data;
+using QueryLantern.Providers;
 using QueryLantern.Schema;
 using QueryLantern.Security;
 using QueryLantern.Services;
@@ -26,6 +27,7 @@ builder.Services.AddSingleton<ProfileSecrets>();
 builder.Services.AddSingleton<SettingsService>();
 builder.Services.AddSingleton<SchemaCache>();
 builder.Services.AddSingleton<SchemaService>();
+builder.Services.AddHttpClient<ProviderClient>();
 
 // Ancora agent runtime. The provider endpoint is read from configuration so the app stays
 // runnable before a real provider profile is configured in the UI (later phases).
