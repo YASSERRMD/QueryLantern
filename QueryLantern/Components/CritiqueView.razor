@@ -1,0 +1,34 @@
+@namespace QueryLantern.Components
+@using QueryLantern.Services
+
+@if (Critique is not null)
+{
+    <div class="critique-card card p-2 mb-3 @(_approved ? "border-success" : "border-warning")">
+        @if (_approved)
+        {
+            <div class="text-success small">Verifier approved this answer.</div>
+        }
+        else
+        {
+            <div class="text-warning small">
+                <strong>Verifier flagged this answer before it settles:</strong>
+                <ul class="mb-1">
+                    @foreach (var issue in Critique.Issues)
+                    {
+                        <li>@issue</li>
+                    }
+                </ul>
+                @if (!string.IsNullOrEmpty(Critique.Suggestion))
+                {
+                    <div class="small">@Critique.Suggestion</div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public required CritiqueResult Critique { get; set; }
+
+    private bool _approved => Critique.Approved;
+}

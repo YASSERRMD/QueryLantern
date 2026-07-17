@@ -97,6 +97,11 @@
     <GroundingView Answer="ChatSvc.LastAnswer" Result="ChatSvc.LastGrounding" />
 }
 
+@if (ChatSvc.LastCritique is not null)
+{
+    <CritiqueView Critique="ChatSvc.LastCritique" />
+}
+
 @if (ChatSvc.State == ChatService.ChatState.AwaitingApproval && ChatSvc.Pending is not null)
 {
     <div class="approval card p-3 mb-3 border-warning">
