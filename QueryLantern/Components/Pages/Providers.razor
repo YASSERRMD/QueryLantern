@@ -6,11 +6,17 @@
 @using QueryLantern.Security
 @inject ProviderRepository ProviderRepo
 @inject SecretVault Vault
+@inject QueryLantern.Services.LocalFirstService LocalFirst
 
 <PageTitle>Providers</PageTitle>
 
 <h2>Provider Profiles</h2>
 <p class="text-muted">Configure the OpenAI-compatible model endpoints QueryLantern uses. API keys are encrypted at rest.</p>
+
+@if (LocalFirst.Enabled)
+{
+    <div class="alert alert-info py-2">Local-first mode is on: only loopback or private-network endpoints are allowed.</div>
+}
 
 @if (_error is not null)
 {
@@ -152,6 +158,13 @@
     {
         try
         {
+            var block = LocalFirst.RejectReasonIfBlocked(_model.BaseUrl);
+            if (block is not null)
+            {
+                _error = block;
+                return;
+            }
+
             var keyRef = _editing?.KeyRef ?? string.Empty;
             if (!string.IsNullOrEmpty(_model.ApiKey))
             {
