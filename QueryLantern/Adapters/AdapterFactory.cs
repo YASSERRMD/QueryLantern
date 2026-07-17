@@ -16,6 +16,9 @@ public static class AdapterFactory
         DatabaseEngine.MySql => new MySqlAdapter(),
         DatabaseEngine.SqlServer => new SqlServerAdapter(),
         DatabaseEngine.Oracle => new OracleAdapter(),
+        DatabaseEngine.DuckDb => new DuckDbAdapter(),
+        DatabaseEngine.ClickHouse => new ClickHouseAdapter(),
+        DatabaseEngine.Odbc => new OdbcAdapter(),
         _ => throw new NotSupportedException($"Engine {engine} is not supported yet.")
     };
 }
