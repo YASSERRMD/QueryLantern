@@ -14,13 +14,20 @@ using QueryLantern.Tools;
 /// </summary>
 public sealed class HumanInTheLoop
 {
+    private readonly AgentToolbox _toolbox;
+
+    public HumanInTheLoop(AgentToolbox toolbox)
+    {
+        _toolbox = toolbox;
+    }
+
     /// <summary>
     /// Approves a staged write: executes the statement, then resumes the run with the outcome so the
     /// agent can report it.
     /// </summary>
     public async Task ApproveAsync(RunnerSession session, IDatabaseAdapter adapter, string stagedSql, CancellationToken ct = default)
     {
-        var rows = new AgentToolbox().ExecuteApprovedWrite(adapter, stagedSql);
+        var rows = _toolbox.ExecuteApprovedWrite(adapter, stagedSql);
         await session.Handle.ResumeAndCollectAsync($"approved: {rows} row(s) affected", ct);
     }
 
