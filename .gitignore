@@ -28,6 +28,7 @@ App_Data/
 vault.key
 identity.key
 activity.journal
+cost.json
 catalog.db
 
 # Logs

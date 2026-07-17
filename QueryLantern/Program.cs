@@ -32,6 +32,8 @@ var identityPath = builder.Configuration["Identity:KeyPath"] ?? "identity.key";
 builder.Services.AddSingleton(new IdentityService(identityPath));
 var journalPath = builder.Configuration["Journal:Path"] ?? "activity.journal";
 builder.Services.AddSingleton<ActivityJournal>(sp => new ActivityJournal(journalPath, sp.GetRequiredService<IdentityService>()));
+var costPath = builder.Configuration["Cost:Path"] ?? "cost.json";
+builder.Services.AddSingleton(new CostService(costPath));
 builder.Services.AddSingleton<SchemaCache>();
 builder.Services.AddSingleton<SchemaService>();
 builder.Services.AddHttpClient<ProviderClient>();

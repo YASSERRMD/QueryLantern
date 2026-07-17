@@ -30,6 +30,7 @@ public sealed class ChatService
     private readonly SchemaCache _schemaCache;
     private readonly ApprovalService _approval;
     private readonly ActivityJournal _journal;
+    private readonly CostService _cost;
 
     public List<ChatEntry> Entries { get; } = new();
     public ChatState State { get; private set; } = ChatState.Idle;
@@ -38,9 +39,12 @@ public sealed class ChatService
     public string? LastError { get; private set; }
     public string? LastResultSetJson { get; private set; }
 
+    private string _costProviderName = "unknown";
+    private string _costModel = "unknown";
+
     public event Action? Changed;
 
-    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal)
+    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost)
     {
         _settings = settings;
         _router = router;
@@ -49,6 +53,7 @@ public sealed class ChatService
         _schemaCache = schemaCache;
         _approval = approval;
         _journal = journal;
+        _cost = cost;
     }
 
     public void Reset()
@@ -78,6 +83,9 @@ public sealed class ChatService
             await adapter.OpenAsync(resolved.Profile, resolved.Password, ct);
 
             var (providerConfig, model) = await _router.ResolveAsync(providerId, modelOverride);
+            var providerProfile = await _settings.GetProviderProfileAsync(providerId);
+            _costProviderName = providerProfile?.Name ?? "unknown";
+            _costModel = model;
             var runner = new AncoraRunner();
             List<ToolSpec> specs = new();
             var session = runner.StartRun(providerConfig, model, BuildInstructions(resolved.Profile),
@@ -178,7 +186,9 @@ public sealed class ChatService
 
     private void Finalize(RunnerSession session, IDatabaseAdapter adapter)
     {
-        LastCost = session.Handle.GetCostTyped()?.TotalUsd.ToString("C4");
+        var total = (decimal?)(session.Handle.GetCostTyped()?.TotalUsd) ?? 0m;
+        LastCost = total.ToString("C4");
+        _cost.Record(session.Handle.RunId, _costProviderName, _costModel, total);
         adapter.Dispose();
         session.Dispose();
         State = ChatState.Done;
