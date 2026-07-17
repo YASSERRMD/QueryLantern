@@ -35,6 +35,25 @@ public sealed class AncoraRunner : IDisposable
         return agent.Run(spec);
     }
 
+    /// <summary>
+    /// Starts a run and streams its events: StartedEvent, TokenEvent, ToolCallEvent,
+    /// SuspendedEvent, ResumedEvent, FailedEvent, and CompletedEvent. The caller can switch
+    /// on the concrete event type to render streaming output.
+    /// </summary>
+    public async IAsyncEnumerable<RunEvent> StreamAsync(
+        string model,
+        string instructions,
+        AgentSpec? baseSpec = null,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var handle = Run(model, instructions, baseSpec);
+        await foreach (var ev in handle.EventsAsync(cancellationToken))
+        {
+            yield return ev;
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)
