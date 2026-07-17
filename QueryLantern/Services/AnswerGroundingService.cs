@@ -40,8 +40,9 @@ public sealed class AnswerGroundingService
         }
 
         var hasEmptyOrNull = HasEmptyOrNullResult(all);
+        var aggregateMismatch = !hasEmptyOrNull && DetectAggregateMismatch(answer, all);
 
-        return new GroundingResult(claims, hasEmptyOrNull, false);
+        return new GroundingResult(claims, hasEmptyOrNull, aggregateMismatch);
     }
 
     public IReadOnlyList<string> UntracedFigures(string answer, IReadOnlyList<QueryResult> results)
@@ -132,5 +133,34 @@ public sealed class AnswerGroundingService
         }
 
         return false;
+    }
+
+    private static bool DetectAggregateMismatch(string answer, IReadOnlyList<QueryResult> results)
+    {
+        var reportedTotal = ExtractReportedTotal(answer);
+        if (reportedTotal is null)
+        {
+            return false;
+        }
+
+        var actualRowCount = results.Sum(r => r?.Rows?.Count ?? 0);
+        return reportedTotal != actualRowCount;
+    }
+
+    private static int? ExtractReportedTotal(string answer)
+    {
+        var matches = FigureRegex.Matches(answer);
+        if (matches.Count == 0)
+        {
+            return null;
+        }
+
+        var totals = matches
+            .Select(m => Normalize(m.Value))
+            .Where(s => !string.IsNullOrEmpty(s))
+            .Select(int.Parse)
+            .ToList();
+
+        return totals.Count > 0 ? totals.Max() : null;
     }
 }
