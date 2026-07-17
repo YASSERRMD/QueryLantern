@@ -60,6 +60,7 @@ public sealed class AnswerCriticService
         var words = question
             .ToLowerInvariant()
             .Split(' ', System.StringSplitOptions.RemoveEmptyEntries)
+            .Select(w => new string(w.Where(char.IsLetterOrDigit).ToArray()))
             .Where(w => w.Length > 3 && !CommonStopwords.Contains(w))
             .ToList();
 
