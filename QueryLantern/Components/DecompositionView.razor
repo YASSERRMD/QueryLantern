@@ -1,0 +1,57 @@
+@namespace QueryLantern.Components
+@using QueryLantern.Models
+@using QueryLantern.Services
+@inject DecompositionService DecompSvc
+
+@if (DecompSvc.Current is not null)
+{
+    <div class="decomp-card card p-3 mb-3">
+        <h6 class="mb-2">Question breakdown</h6>
+        <p class="text-muted small mb-2">@DecompSvc.Current.Rationale</p>
+        <ul class="list-unstyled mb-0">
+            @foreach (var sq in DecompSvc.Current.SubQuestions)
+            {
+                var hasChildren = DecompSvc.Current.Edges.Any(e => e.From == sq.Id);
+                <li class="mb-1">
+                    <div class="d-flex align-items-center gap-2">
+                        @if (hasChildren)
+                        {
+                            <button class="btn btn-sm btn-link p-0" @onclick="@(() => Toggle(sq.Id))">@(Collapsed(sq.Id) ? "+" : "-")</button>
+                        }
+                        else
+                        {
+                            <span class="text-muted" style="width:1.2rem;display:inline-block;">•</span>
+                        }
+                        <span><strong>@sq.Id</strong>: @sq.Text</span>
+                    </div>
+                    @if (hasChildren && !Collapsed(sq.Id))
+                    {
+                        var children = DecompSvc.Current.Edges.Where(e => e.From == sq.Id).Select(e => e.To);
+                        <ul class="list-unstyled ms-4 border-start ps-2 mt-1">
+                            @foreach (var childId in children)
+                            {
+                                var child = DecompSvc.Current.SubQuestions.FirstOrDefault(s => s.Id == childId);
+                                if (child is not null)
+                                {
+                                    <li><span class="text-muted">↳</span> @child.Text</li>
+                                }
+                            }
+                        </ul>
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    private readonly HashSet<string> _collapsed = new(System.StringComparer.Ordinal);
+
+    private void Toggle(string id)
+    {
+        if (_collapsed.Contains(id)) _collapsed.Remove(id);
+        else _collapsed.Add(id);
+    }
+
+    private bool Collapsed(string id) => _collapsed.Contains(id);
+}

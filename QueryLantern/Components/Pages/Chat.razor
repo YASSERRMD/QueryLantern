@@ -10,6 +10,8 @@
 @inject ProviderRepository ProviderRepo
 @inject SettingsService Settings
 @inject ModelRouter Router
+@inject DecompositionService DecompSvc
+@inject QueryLantern.Schema.SchemaCache SchemaCache
 
 <PageTitle>Chat</PageTitle>
 
@@ -80,6 +82,11 @@
     }
 }
 
+@if (DecompSvc.Current is not null)
+{
+    <DecompositionView />
+}
+
 @if (ChatSvc.LastResultSetJson is not null)
 {
     <ResultGrid Json="ChatSvc.LastResultSetJson" />
@@ -107,6 +114,7 @@
     <input class="form-control" placeholder="Ask something like 'how many users signed up last week?'"
            @bind="_draft" @onkeydown="OnKey" disabled="@(_busy || _connectionId == 0 || _providerId == 0)" />
     <button class="btn btn-outline-primary" @onclick="Plan" disabled="@(_busy || _connectionId == 0 || _providerId == 0)">Plan</button>
+    <button class="btn btn-outline-info" @onclick="Decompose" disabled="@(_busy || _connectionId == 0)">Decompose</button>
     <button class="btn btn-primary" @onclick="Send" disabled="@(_busy || _connectionId == 0 || _providerId == 0)">Send</button>
 </div>
 
@@ -141,12 +149,14 @@
         _providers = (await ProviderRepo.ListAsync()).ToList();
         ChatSvc.Changed += OnChanged;
         PlanSvc.Changed += OnChanged;
+        DecompSvc.Changed += OnChanged;
     }
 
     public void Dispose()
     {
         ChatSvc.Changed -= OnChanged;
         PlanSvc.Changed -= OnChanged;
+        DecompSvc.Changed -= OnChanged;
     }
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
@@ -187,6 +197,19 @@
     private void DiscardPlan()
     {
         PlanSvc.Clear();
+        StateHasChanged();
+    }
+
+    private async Task Decompose()
+    {
+        if (string.IsNullOrWhiteSpace(_draft)) return;
+        _busy = true;
+        StateHasChanged();
+        var summary = SchemaCache.Get(_connectionId) is { } model
+            ? QueryLantern.Schema.SchemaSerializer.ToCompactText(model)
+            : null;
+        DecompSvc.DecomposeAndPlan(_draft, summary);
+        _busy = false;
         StateHasChanged();
     }
 

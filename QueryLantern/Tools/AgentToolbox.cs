@@ -25,6 +25,7 @@ public sealed class AgentToolbox
         "sample_rows",
         "explain_plan",
         "planner_plan",
+        "decompose_question",
         "propose_write"
     };
 
@@ -68,6 +69,7 @@ public sealed class AgentToolbox
         var queryTools = new QueryTools(adapter, maxRows);
         var schemaTools = new SchemaTools(adapter, _schemaCache);
         var plannerTools = new PlannerTool(_schemaCache);
+        var decomposeTools = new DecomposeTool();
 
         var sqlInput = new ToolInputSchema(
             "object",
@@ -148,6 +150,17 @@ public sealed class AgentToolbox
             return plannerTools.Plan(question, summary);
         });
         specs.Add(new ToolSpec("planner_plan", "Produce an explicit, inspectable PlanGraph for a user question against the schema", plannerInput));
+
+        var decomposeInput = new ToolInputSchema(
+            "object",
+            new Dictionary<string, ToolInputProperty> { ["question"] = new("string", "The compound question to decompose into sub-questions") },
+            new List<string> { "question" });
+        ToolRegistry.Register(runtime, "decompose_question", "Split a compound question into ordered, answerable sub-questions", input =>
+        {
+            var question = input.TryGetProperty("question", out var qEl) ? qEl.GetString() ?? string.Empty : string.Empty;
+            return decomposeTools.Decompose(question);
+        });
+        specs.Add(new ToolSpec("decompose_question", "Split a compound question into ordered, answerable sub-questions", decomposeInput));
 
         return specs;
     }

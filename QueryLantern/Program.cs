@@ -53,6 +53,7 @@ builder.Services.AddSingleton<AncoraRunner>();
 builder.Services.AddScoped<QueryLantern.Tools.AgentToolbox>();
 builder.Services.AddScoped<QueryLantern.Tools.PlannerTool>();
 builder.Services.AddScoped<QueryLantern.Services.GraphRunService>();
+builder.Services.AddScoped<QueryLantern.Services.DecompositionService>();
 builder.Services.AddScoped<QueryLantern.Services.PlanService>();
 builder.Services.AddScoped<ChatService>();
 
