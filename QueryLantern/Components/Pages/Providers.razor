@@ -1,9 +1,204 @@
 @page "/providers"
+@using Microsoft.AspNetCore.Components.Forms
+@using QueryLantern.Data
+@using QueryLantern.Models
+@using QueryLantern.Providers
+@using QueryLantern.Security
+@inject ProviderRepository ProviderRepo
+@inject SecretVault Vault
+
 <PageTitle>Providers</PageTitle>
 
 <h2>Provider Profiles</h2>
-<p class="text-muted">Configure the OpenAI-compatible model endpoints QueryLantern uses.</p>
+<p class="text-muted">Configure the OpenAI-compatible model endpoints QueryLantern uses. API keys are encrypted at rest.</p>
 
-<div class="card p-4">
-    <p class="text-muted mb-0">No provider profiles yet.</p>
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card p-3">
+            <h4>@(_editing is null ? "Add provider" : $"Edit: {_editing.Name}")</h4>
+            <EditForm EditContext="_editContext" OnValidSubmit="SaveAsync">
+                <div class="mb-2">
+                    <label class="form-label">Name</label>
+                    <InputText class="form-control" @bind-Value="_model.Name" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Kind</label>
+                    <InputSelect class="form-select" @bind-Value="_model.Kind" @oninput="OnKindChanged">
+                        @foreach (var k in ProviderDefaults.AllKinds)
+                        {
+                            <option value="@k">@k</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Base URL</label>
+                    <InputText class="form-control" @bind-Value="_model.BaseUrl" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Model ID</label>
+                    <InputText class="form-control" @bind-Value="_model.ModelId" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">API key @(_editing is not null ? "(leave blank to keep)" : "")</label>
+                    <InputText type="password" class="form-control" @bind-Value="_model.ApiKey" />
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    @if (_editing is not null)
+                    {
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CancelEdit">Cancel</button>
+                    }
+                </div>
+            </EditForm>
+            @if (_testResult is not null)
+            {
+                <div class="mt-2 alert @(_testOk ? "alert-success" : "alert-danger")">@_testResult</div>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card p-3">
+            <h4>Saved providers</h4>
+            @if (_list.Count == 0)
+            {
+                <p class="text-muted mb-0">No provider profiles yet.</p>
+            }
+            else
+            {
+                <table class="table">
+                    <thead><tr><th>Name</th><th>Kind</th><th>Model</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var p in _list)
+                        {
+                            <tr>
+                                <td>@p.Name</td>
+                                <td>@p.Kind</td>
+                                <td>@p.ModelId</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => StartEdit(p)">Edit</button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(p)">Delete</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
 </div>
+
+@code {
+    private List<ProviderProfile> _list = new();
+    private ProviderProfile? _editing;
+    private ProviderFormModel _model = new();
+    private EditContext _editContext = null!;
+    private string? _error;
+    private string? _testResult;
+    private bool _testOk;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _editContext = new EditContext(_model);
+        ApplyTemplate(_model.Kind);
+        await RefreshAsync();
+    }
+
+    private void ApplyTemplate(ProviderKind kind)
+    {
+        var t = ProviderDefaults.For(kind);
+        _model.BaseUrl = t.BaseUrl;
+    }
+
+    private void OnKindChanged(Microsoft.AspNetCore.Components.ChangeEventArgs e)
+    {
+        if (Enum.TryParse<ProviderKind>(e.Value?.ToString(), out var kind))
+        {
+            _model.Kind = kind;
+            ApplyTemplate(kind);
+        }
+    }
+
+    private async Task RefreshAsync() => _list = (await ProviderRepo.ListAsync()).ToList();
+
+    private void StartEdit(ProviderProfile p)
+    {
+        _editing = p;
+        _model = new ProviderFormModel
+        {
+            Name = p.Name,
+            Kind = p.Kind,
+            BaseUrl = p.BaseUrl,
+            ModelId = p.ModelId
+        };
+        _editContext = new EditContext(_model);
+        _testResult = null;
+    }
+
+    private void CancelEdit()
+    {
+        _editing = null;
+        _model = new ProviderFormModel();
+        ApplyTemplate(_model.Kind);
+        _editContext = new EditContext(_model);
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            var keyRef = _editing?.KeyRef ?? string.Empty;
+            if (!string.IsNullOrEmpty(_model.ApiKey))
+            {
+                keyRef = Vault.Encrypt(_model.ApiKey);
+            }
+
+            var profile = new ProviderProfile
+            {
+                Id = _editing?.Id ?? 0,
+                Name = _model.Name,
+                Kind = _model.Kind,
+                BaseUrl = _model.BaseUrl,
+                ModelId = _model.ModelId,
+                KeyRef = keyRef
+            };
+
+            if (_editing is null)
+            {
+                await ProviderRepo.InsertAsync(profile);
+            }
+            else
+            {
+                await ProviderRepo.UpdateAsync(profile);
+            }
+
+            CancelEdit();
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task DeleteAsync(ProviderProfile p)
+    {
+        await ProviderRepo.DeleteAsync(p.Id);
+        if (_editing?.Id == p.Id) CancelEdit();
+        await RefreshAsync();
+    }
+
+    public sealed class ProviderFormModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public ProviderKind Kind { get; set; } = ProviderKind.OpenAI;
+        public string BaseUrl { get; set; } = string.Empty;
+        public string ModelId { get; set; } = string.Empty;
+        public string ApiKey { get; set; } = string.Empty;
+    }
+}
