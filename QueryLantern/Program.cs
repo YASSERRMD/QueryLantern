@@ -1,10 +1,18 @@
 using QueryLantern.Components;
+using QueryLantern.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Ancora agent runtime. The provider endpoint is read from configuration so the app stays
+// runnable before a real provider profile is configured in the UI (later phases).
+var baseUrl = builder.Configuration["Ancora:BaseUrl"] ?? "http://localhost:11434/v1";
+var authEnvVar = builder.Configuration["Ancora:AuthEnvVar"] ?? "ANCORA_API_KEY";
+var chatPath = builder.Configuration["Ancora:ChatCompletionsPath"] ?? "/v1/chat/completions";
+builder.Services.AddSingleton(new AncoraRunner(baseUrl, authEnvVar, chatPath));
 
 var app = builder.Build();
 
