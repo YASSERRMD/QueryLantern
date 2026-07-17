@@ -38,8 +38,24 @@
             <li class="plan-step mb-2">
                 <div class="d-flex align-items-center gap-2">
                     <span class="step-badge @StatusClass(status)">@StatusLabel(status)</span>
-                    <span><strong>@step.Id</strong>: @step.Intent</span>
+                    <button class="btn btn-sm btn-link p-0 text-start text-body" @onclick="@(() => Toggle(step.Id))">
+                        <strong>@step.Id</strong>: @step.Intent
+                    </button>
                 </div>
+                @if (_expanded.Contains(step.Id))
+                {
+                    <div class="step-detail ms-4 small text-muted border-start ps-2">
+                        <div><b>Tool:</b> @step.Tool</div>
+                        @if (!string.IsNullOrEmpty(step.Inputs))
+                        {
+                            <div><b>Input:</b> <code>@step.Inputs</code></div>
+                        }
+                        @if (PlanSvc.StepOutput.TryGetValue(step.Id, out var outp))
+                        {
+                            <div><b>Output:</b> <span class="step-output">@outp</span></div>
+                        }
+                    </div>
+                }
             </li>
         }
     </ol>
@@ -51,6 +67,14 @@
 </div>
 
 @code {
+    private readonly HashSet<string> _expanded = new(System.StringComparer.Ordinal);
+
+    private void Toggle(string id)
+    {
+        if (_expanded.Contains(id)) _expanded.Remove(id);
+        else _expanded.Add(id);
+    }
+
     private static string StatusClass(PlanStepStatus status) => status switch
     {
         PlanStepStatus.Pending => "bg-secondary",
