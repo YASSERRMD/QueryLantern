@@ -21,6 +21,7 @@ public sealed class McpServer
     private readonly Dictionary<string, PendingWrite> _pendingWrites = new();
     private readonly object _pendingLock = new();
     private readonly string? _requiredToken = Environment.GetEnvironmentVariable("QL_MCP_TOKEN");
+    private const int MaxRequestBytes = 1_000_000;
     private bool _initialized;
 
     public McpServer(string catalogPath)
@@ -31,6 +32,11 @@ public sealed class McpServer
 
     public async Task<string> HandleAsync(string line, CancellationToken ct = default)
     {
+        if (line.Length > MaxRequestBytes)
+        {
+            return Error(null, -32700, "Request too large");
+        }
+
         JsonElement request;
         try
         {
