@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\QueryLantern\QueryLantern.csproj" />
+    <ProjectReference Include="..\QueryLantern.Mcp\QueryLantern.Mcp.csproj" />
   </ItemGroup>
 
 </Project>
