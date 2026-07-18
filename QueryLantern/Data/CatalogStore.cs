@@ -87,6 +87,15 @@ public sealed class CatalogStore : IDisposable
                 Expression TEXT NOT NULL,
                 TableName TEXT
             );
+
+            CREATE TABLE IF NOT EXISTS QueryLibrary (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ConnectionId INTEGER NOT NULL,
+                Question TEXT NOT NULL,
+                Sql TEXT NOT NULL,
+                Rating INTEGER NOT NULL,
+                CreatedAt TEXT NOT NULL
+            );
             """;
         cmd.ExecuteNonQuery();
     }
