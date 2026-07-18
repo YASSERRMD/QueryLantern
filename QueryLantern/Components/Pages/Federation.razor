@@ -1,0 +1,90 @@
+@page "/federation"
+@using QueryLantern.Data
+@using QueryLantern.Models
+@using QueryLantern.Security
+@using QueryLantern.Services
+@inject ConnectionRepository ConnectionRepo
+@inject SecretVault Vault
+@inject FederationService FedSvc
+
+<PageTitle>Cross-connection federation</PageTitle>
+
+<h2>Cross-connection federation</h2>
+<p class="text-muted">Join tables across two databases on a shared key column. DuckDB is the intended engine; an in-process equi-join is used as a fallback.</p>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <h5>Left</h5>
+        <select class="form-select mb-2" @bind="_leftConn">
+            <option value="0">-- connection --</option>
+            @foreach (var c in _connections) { <option value="@c.Id">@c.Name</option> }
+        </select>
+        <input class="form-control mb-2" @bind="_leftTable" placeholder="Table" />
+        <input class="form-control" @bind="_leftKey" placeholder="Key column" />
+    </div>
+    <div class="col-md-6">
+        <h5>Right</h5>
+        <select class="form-select mb-2" @bind="_rightConn">
+            <option value="0">-- connection --</option>
+            @foreach (var c in _connections) { <option value="@c.Id">@c.Name</option> }
+        </select>
+        <input class="form-control mb-2" @bind="_rightTable" placeholder="Table" />
+        <input class="form-control" @bind="_rightKey" placeholder="Key column" />
+    </div>
+</div>
+
+<button class="btn btn-primary mt-3" @onclick="RunAsync" disabled="@(_running)">@(_running ? "Joining…" : "Join")</button>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger mt-2">@_error</div>
+}
+
+@if (!string.IsNullOrEmpty(_resultJson))
+{
+    <ResultGrid Json="_resultJson" />
+}
+
+@code {
+    private List<ConnectionProfile> _connections = new();
+    private int _leftConn;
+    private int _rightConn;
+    private string _leftTable = string.Empty;
+    private string _rightTable = string.Empty;
+    private string _leftKey = string.Empty;
+    private string _rightKey = string.Empty;
+    private string _resultJson = string.Empty;
+    private string? _error;
+    private bool _running;
+
+    protected override async Task OnInitializedAsync() => _connections = (await ConnectionRepo.ListAsync()).ToList();
+
+    private async Task RunAsync()
+    {
+        _running = true;
+        _error = null;
+        _resultJson = string.Empty;
+        try
+        {
+            var request = new FederationRequest(
+                new FederationSide(_leftConn, _leftTable, _leftKey),
+                new FederationSide(_rightConn, _rightTable, _rightKey));
+            var result = await FedSvc.JoinAsync(request);
+            _resultJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                columns = result.Columns.Select(c => new { name = c.Name, dataType = c.DataType }),
+                rows = result.Rows,
+                rowCount = result.RowCount,
+                truncatedAt = result.TruncatedAt
+            });
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _running = false;
+        }
+    }
+}
