@@ -32,12 +32,19 @@ public sealed class FederationService
 
         var leftKey = request.Left.KeyColumn;
         var rightKey = request.Right.KeyColumn;
+        var leftKeyIdx = IndexOf(left.Columns, leftKey);
+        var rightKeyIdx = IndexOf(right.Columns, rightKey);
+        if (leftKeyIdx < 0 || rightKeyIdx < 0)
+        {
+            return new QueryResult { Columns = new List<ColumnMeta>(), Rows = new List<IReadOnlyList<object?>>(), TruncatedAt = 0 };
+        }
+
         var leftLookup = left.Rows
-            .Where(r => r.Count > IndexOf(left.Columns, leftKey))
-            .ToDictionary(r => Normalize(r[IndexOf(left.Columns, leftKey)]), r => r);
+            .Where(r => r.Count > leftKeyIdx)
+            .ToDictionary(r => Normalize(r[leftKeyIdx]), r => r);
         var rightLookup = right.Rows
-            .Where(r => r.Count > IndexOf(right.Columns, rightKey))
-            .ToDictionary(r => Normalize(r[IndexOf(right.Columns, rightKey)]), r => r);
+            .Where(r => r.Count > rightKeyIdx)
+            .ToDictionary(r => Normalize(r[rightKeyIdx]), r => r);
 
         var columns = new List<ColumnMeta>();
         columns.AddRange(left.Columns.Select(c => new ColumnMeta($"L.{c.Name}", c.DataType)));
