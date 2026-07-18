@@ -70,13 +70,7 @@
                 new FederationSide(_leftConn, _leftTable, _leftKey),
                 new FederationSide(_rightConn, _rightTable, _rightKey));
             var result = await FedSvc.JoinAsync(request);
-            _resultJson = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                columns = result.Columns.Select(c => new { name = c.Name, dataType = c.DataType }),
-                rows = result.Rows,
-                rowCount = result.RowCount,
-                truncatedAt = result.TruncatedAt
-            });
+            _resultJson = QueryLantern.Services.ResultJson.Serialize(result);
         }
         catch (Exception ex)
         {

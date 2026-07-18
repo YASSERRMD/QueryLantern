@@ -96,6 +96,17 @@ public sealed class CatalogStore : IDisposable
                 Rating INTEGER NOT NULL,
                 CreatedAt TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS Schedules (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ConnectionId INTEGER NOT NULL,
+                Question TEXT NOT NULL,
+                Sql TEXT NOT NULL,
+                Cadence TEXT NOT NULL,
+                LastRunAt TEXT,
+                LastSummary TEXT,
+                LastResultJson TEXT
+            );
             """;
         cmd.ExecuteNonQuery();
     }
