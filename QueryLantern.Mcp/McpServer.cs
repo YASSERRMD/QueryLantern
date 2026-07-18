@@ -80,6 +80,10 @@ public sealed class McpServer
             {
                 "tools/list" => Ok(id, new { tools = ListTools() }),
                 "tools/call" => await HandleToolCallAsync(id, @params, ct),
+                "resources/list" => Ok(id, new { resources = ListResources() }),
+                "resources/read" => await HandleResourceReadAsync(id, @params, ct),
+                "prompts/list" => Ok(id, new { prompts = ListPrompts() }),
+                "prompts/get" => HandlePromptGet(id, @params),
                 _ => Error(id, -32601, $"Method not found: {method}")
             };
         }
@@ -99,6 +103,80 @@ public sealed class McpServer
             Tool("ql_saved_analyses", "List saved analyses", Array.Empty<string>())
         };
         return JsonSerializer.SerializeToElement(tools);
+    }
+
+    private JsonElement ListResources()
+    {
+        var connections = Task.Run(() => new ConnectionRepository(_catalog).ListAsync()).GetAwaiter().GetResult();
+        var resources = connections.Select(c => new
+        {
+            uri = $"ql://schema/{c.Id}",
+            name = $"Schema: {c.Name}",
+            mimeType = "application/json",
+            description = "Database schema for this connection"
+        }).ToList();
+        var saved = Task.Run(() => new SavedAnalysisRepository(_catalog).ListAsync()).GetAwaiter().GetResult();
+        resources.AddRange(saved.Select(s => new
+        {
+            uri = $"ql://saved/{s.Id}",
+            name = $"Saved analysis: {s.Name}",
+            mimeType = "application/json",
+            description = "A saved analysis payload"
+        }));
+        return JsonSerializer.SerializeToElement(resources);
+    }
+
+    private async Task<string> HandleResourceReadAsync(int? id, JsonElement @params, CancellationToken ct)
+    {
+        var uri = @params.TryGetProperty("uri", out var u) ? u.GetString() ?? "" : "";
+        if (uri.StartsWith("ql://schema/", StringComparison.Ordinal))
+        {
+            var connId = int.Parse(uri["ql://schema/".Length..]);
+            var profile = await new ConnectionRepository(_catalog).GetAsync(connId);
+            if (profile is null) return Error(id, -32004, "Connection not found");
+            var schema = await IntrospectAsync(profile, ct);
+            return Ok(id, new { contents = new[] { new { uri, mimeType = "application/json", text = JsonSerializer.Serialize(schema) } } });
+        }
+
+        if (uri.StartsWith("ql://saved/", StringComparison.Ordinal))
+        {
+            var savedId = int.Parse(uri["ql://saved/".Length..]);
+            var saved = await new SavedAnalysisRepository(_catalog).GetAsync(savedId);
+            if (saved is null) return Error(id, -32004, "Saved analysis not found");
+            return Ok(id, new { contents = new[] { new { uri, mimeType = "application/json", text = saved.Payload } } });
+        }
+
+        return Error(id, -32004, "Unknown resource");
+    }
+
+    private JsonElement ListPrompts() => JsonSerializer.SerializeToElement(new[]
+    {
+        new
+        {
+            name = "ql_analysis",
+            description = "Template for analysing a business question against a connection",
+            arguments = new[] { new { name = "connectionId", description = "Connection to analyse", required = true } }
+        }
+    });
+
+    private string HandlePromptGet(int? id, JsonElement @params)
+    {
+        var name = @params.TryGetProperty("name", out var n) ? n.GetString() : null;
+        if (name != "ql_analysis") return Error(id, -32004, "Unknown prompt");
+        var connId = @params.TryGetProperty("arguments", out var a) && a.TryGetProperty("connectionId", out var c) ? c.GetString() : "?";
+        var messages = new[]
+        {
+            new { role = "user", content = new { type = "text", text = $"Analyse connection {connId}. Use ql_list_tables and ql_describe_table to explore, then ql_run_query for read-only analysis." } }
+        };
+        return Ok(id, new { messages });
+    }
+
+    private async Task<SchemaModel> IntrospectAsync(ConnectionProfile profile, CancellationToken ct)
+    {
+        var password = ResolvePassword(profile);
+        using var adapter = AdapterFactory.Create(profile.Engine);
+        await adapter.OpenAsync(profile, password, ct);
+        return await _schemaCache.GetOrIntrospectAsync(profile.Id, profile, password, ct);
     }
 
     private async Task<string> HandleToolCallAsync(int? id, JsonElement @params, CancellationToken ct)
