@@ -1,0 +1,118 @@
+@page "/schedules"
+@using QueryLantern.Data
+@using QueryLantern.Models
+@using QueryLantern.Security
+@using QueryLantern.Services
+@inject ConnectionRepository ConnectionRepo
+@inject ScheduledAnalysisService Scheduler
+
+<PageTitle>Scheduled analyses</PageTitle>
+
+<h2>Scheduled analyses</h2>
+<p class="text-muted">Recurring analyses that report what changed since the previous run.</p>
+
+<div class="card p-3 mb-3">
+    <h5>New schedule</h5>
+    <div class="row g-2">
+        <div class="col-md-3">
+            <select class="form-select" @bind="_connId">
+                <option value="0">-- connection --</option>
+                @foreach (var c in _connections) { <option value="@c.Id">@c.Name</option> }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <input class="form-control" @bind="_question" placeholder="Question" />
+        </div>
+        <div class="col-md-3">
+            <input class="form-control" @bind="_sql" placeholder="SQL" />
+        </div>
+        <div class="col-md-2">
+            <input class="form-control" @bind="_cadence" placeholder="Cadence (e.g. daily)" />
+        </div>
+    </div>
+    <button class="btn btn-primary mt-2" @onclick="CreateAsync">Add</button>
+</div>
+
+@if (_list.Count == 0)
+{
+    <p class="text-muted">No schedules yet.</p>
+}
+else
+{
+    <table class="table">
+        <thead><tr><th>Question</th><th>Cadence</th><th>Last run</th><th>Summary</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var s in _list)
+            {
+                <tr>
+                    <td>@s.Question</td>
+                    <td>@s.Cadence</td>
+                    <td>@(s.LastRunAt?.ToString("u") ?? "—")</td>
+                    <td class="small">@(s.LastSummary ?? "—")</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => RunAsync(s.Id)">Run</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(s.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (_change is not null)
+{
+    <div class="alert alert-info">
+        <strong>Change since last run:</strong>
+        <div>Rows: @_change.PreviousRowCount → @_change.CurrentRowCount (@(_change.RowDelta >= 0 ? "+" : "")@_change.RowDelta)</div>
+        @if (!string.IsNullOrEmpty(_change.MetricDelta)) { <div>@_change.MetricDelta</div> }
+        @foreach (var c in _change.NotableChanges) { <div>• @c</div> }
+    </div>
+    <ResultGrid Json="_resultJson" />
+}
+
+@code {
+    private List<ConnectionProfile> _connections = new();
+    private List<ScheduledAnalysis> _list = new();
+    private int _connId;
+    private string _question = string.Empty;
+    private string _sql = string.Empty;
+    private string _cadence = "daily";
+    private ChangeSummary? _change;
+    private string _resultJson = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _connections = (await ConnectionRepo.ListAsync()).ToList();
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync() => _list = (await Scheduler.ListAsync()).ToList();
+
+    private async Task CreateAsync()
+    {
+        if (_connId <= 0 || string.IsNullOrWhiteSpace(_sql)) return;
+        await Scheduler.CreateAsync(_connId, _question, _sql, _cadence);
+        _question = _sql = string.Empty;
+        await RefreshAsync();
+    }
+
+    private async Task RunAsync(int id)
+    {
+        var (_, change, result) = await Scheduler.RunAsync(id);
+        _change = change;
+        _resultJson = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            columns = result.Columns.Select(c => new { c.Name, c.DataType }),
+            rows = result.Rows,
+            rowCount = result.RowCount,
+            truncatedAt = result.TruncatedAt
+        });
+        await RefreshAsync();
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        await Scheduler.DeleteAsync(id);
+        await RefreshAsync();
+    }
+}
