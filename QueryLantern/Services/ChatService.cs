@@ -39,6 +39,8 @@ public sealed class ChatService
     private readonly SchemaMemoryService _memory;
     private readonly ConversationMemoryService _conversation;
     private readonly SemanticLayerService _semantic;
+    private readonly QueryLibraryService _library;
+    private string? _lastSql;
 
     public List<ChatEntry> Entries { get; } = new();
     public ChatState State { get; private set; } = ChatState.Idle;
@@ -60,7 +62,7 @@ public sealed class ChatService
 
     public event Action? Changed;
 
-    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost, SavedAnalysisRepository saved, AnswerGroundingService grounding, AnswerCriticService critic, ConfidenceService confidence, SchemaMemoryService memory, ConversationMemoryService conversation, SemanticLayerService semantic)
+    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost, SavedAnalysisRepository saved, AnswerGroundingService grounding, AnswerCriticService critic, ConfidenceService confidence, SchemaMemoryService memory, ConversationMemoryService conversation, SemanticLayerService semantic, QueryLibraryService library)
     {
         _settings = settings;
         _router = router;
@@ -77,6 +79,7 @@ public sealed class ChatService
         _memory = memory;
         _conversation = conversation;
         _semantic = semantic;
+        _library = library;
     }
 
     public void Reset()
@@ -149,7 +152,7 @@ public sealed class ChatService
                 {
                     LastResultSetJson = sql;
                     _journal.Append("query", sql);
-                }),
+                }, onRunQuerySql: s => _lastSql = s),
                 specs);
 
             await foreach (var ev in session.Handle.EventsAsync(ct))
@@ -252,6 +255,10 @@ public sealed class ChatService
             LastGrounding = ComputeGrounding(LastAnswer);
             LastCritique = _critic.Critique(LastUserQuestion, LastAnswer, LastGrounding);
             LastConfidence = _confidence.Compute(LastGrounding, LastCritique, false, 0);
+            if (LastConfidence.Level == ConfidenceLevel.High && !string.IsNullOrEmpty(_lastSql) && _currentConnectionId > 0)
+            {
+                _ = _library.SaveAsync(_currentConnectionId, LastUserQuestion ?? "", _lastSql, 1);
+            }
         }
 
         if (!string.IsNullOrEmpty(LastUserQuestion))
@@ -319,7 +326,8 @@ public sealed class ChatService
            "and propose_write only when the user explicitly asks to change data. Never invent table or column names.";
         var memory = await _memory.SummarizeForPromptAsync(connectionId);
         var glossary = await _semantic.BuildGlossaryAsync(connectionId);
-        var extra = string.Join("\n", new[] { memory, glossary }.Where(s => !string.IsNullOrEmpty(s)));
+        var fewShot = await _library.BuildFewShotAsync(connectionId, LastUserQuestion ?? string.Empty);
+        var extra = string.Join("\n", new[] { memory, glossary, fewShot }.Where(s => !string.IsNullOrEmpty(s)));
         return string.IsNullOrEmpty(extra) ? baseText : baseText + "\n" + extra;
     }
 

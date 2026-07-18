@@ -42,9 +42,9 @@ public sealed class AgentToolbox
     /// the caller can embed them in the agent spec. Read tools run immediately; write tools stage for
     /// human approval (the run suspends until a decision resumes it).
     /// </summary>
-    public List<ToolSpec> RegisterTools(Runtime runtime, IDatabaseAdapter adapter, int maxRows = 1000, Action<string>? onRunQueryResult = null)
+    public List<ToolSpec> RegisterTools(Runtime runtime, IDatabaseAdapter adapter, int maxRows = 1000, Action<string>? onRunQueryResult = null, Action<string>? onRunQuerySql = null)
     {
-        var specs = RegisterReadHandlers(runtime, adapter, maxRows, onRunQueryResult);
+        var specs = RegisterReadHandlers(runtime, adapter, maxRows, onRunQueryResult, onRunQuerySql);
         var writeTools = new WriteTools(adapter);
         var sqlInput = new ToolInputSchema(
             "object",
@@ -64,7 +64,7 @@ public sealed class AgentToolbox
     /// sample_rows, explain_plan, run_query, planner_plan) and returns their specs. Shared by the
     /// single-agent run and the multi-step graph run so every node can call any read tool.
     /// </summary>
-    public List<ToolSpec> RegisterReadHandlers(Runtime runtime, IDatabaseAdapter adapter, int maxRows = 1000, Action<string>? onRunQueryResult = null)
+    public List<ToolSpec> RegisterReadHandlers(Runtime runtime, IDatabaseAdapter adapter, int maxRows = 1000, Action<string>? onRunQueryResult = null, Action<string>? onRunQuerySql = null)
     {
         var specs = new List<ToolSpec>();
         var queryTools = new QueryTools(adapter, maxRows);
@@ -82,6 +82,7 @@ public sealed class AgentToolbox
             var sql = input.TryGetProperty("sql", out var sqlEl) ? sqlEl.GetString() ?? string.Empty : string.Empty;
             var result = queryTools.RunQueryValidated(sql);
             onRunQueryResult?.Invoke(result);
+            onRunQuerySql?.Invoke(sql);
             return result;
         });
         specs.Add(new ToolSpec("run_query", "Execute a read-only SQL query against the active connection and return the rows", sqlInput));
