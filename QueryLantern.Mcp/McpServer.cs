@@ -18,6 +18,8 @@ public sealed class McpServer
     private readonly CatalogStore _catalog;
     private readonly SecretVault _vault;
     private readonly SchemaCache _schemaCache = new();
+    private readonly Dictionary<string, PendingWrite> _pendingWrites = new();
+    private readonly object _pendingLock = new();
     private readonly string? _requiredToken = Environment.GetEnvironmentVariable("QL_MCP_TOKEN");
     private bool _initialized;
 
@@ -100,7 +102,9 @@ public sealed class McpServer
             Tool("ql_run_query", "Execute a read-only SQL query against a connection", new[] { "connectionId", "sql" }),
             Tool("ql_list_tables", "List tables in a connection", new[] { "connectionId" }),
             Tool("ql_describe_table", "Describe a table's columns", new[] { "connectionId", "table" }),
-            Tool("ql_saved_analyses", "List saved analyses", Array.Empty<string>())
+            Tool("ql_saved_analyses", "List saved analyses", Array.Empty<string>()),
+            Tool("ql_propose_write", "Stage a mutating SQL statement for human approval", new[] { "connectionId", "sql" }),
+            Tool("ql_approve_write", "Approve and execute a previously staged write (governed)", new[] { "ticket" })
         };
         return JsonSerializer.SerializeToElement(tools);
     }
@@ -221,6 +225,37 @@ public sealed class McpServer
                 var text = JsonSerializer.Serialize(saved.Select(s => new { s.Id, s.Name }));
                 return ToolResult(id, text);
             }
+            case "ql_propose_write":
+            {
+                var connId = args.GetProperty("connectionId").GetInt32();
+                var sql = args.GetProperty("sql").GetString() ?? "";
+                if (IsReadOnly(sql)) return Error(id, -32003, "propose_write expects a mutating statement");
+                var ticket = Guid.NewGuid().ToString("N");
+                lock (_pendingLock)
+                {
+                    _pendingWrites[ticket] = new PendingWrite(connId, sql);
+                }
+
+                return ToolResult(id, JsonSerializer.Serialize(new { status = "pending_approval", ticket, sql }));
+            }
+            case "ql_approve_write":
+            {
+                var ticket = args.GetProperty("ticket").GetString() ?? "";
+                PendingWrite? pending = null;
+                lock (_pendingLock)
+                {
+                    _pendingWrites.TryGetValue(ticket, out pending);
+                }
+
+                if (pending is null) return Error(id, -32004, "Unknown or expired ticket");
+                var (profile, err3) = await RequireConnectionAsync(pending.ConnectionId, id);
+                if (profile is null) return err3;
+                using var adapter = AdapterFactory.Create(profile.Engine);
+                await adapter.OpenAsync(profile, ResolvePassword(profile), ct);
+                adapter.ExecuteWriteAsync(pending.Sql).GetAwaiter().GetResult();
+                lock (_pendingLock) { _pendingWrites.Remove(ticket); }
+                return ToolResult(id, JsonSerializer.Serialize(new { status = "executed", ticket }));
+            }
             default:
                 return Error(id, -32601, $"Unknown tool: {name}");
         }
@@ -291,4 +326,6 @@ public sealed class McpServer
 
     private static string Error(int? id, int code, string message)
         => JsonSerializer.Serialize(new { jsonrpc = "2.0", id, error = new { code, message } });
+
+    private sealed record PendingWrite(int ConnectionId, string Sql);
 }
