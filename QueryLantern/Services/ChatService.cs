@@ -38,6 +38,7 @@ public sealed class ChatService
     private readonly ConfidenceService _confidence;
     private readonly SchemaMemoryService _memory;
     private readonly ConversationMemoryService _conversation;
+    private readonly SemanticLayerService _semantic;
 
     public List<ChatEntry> Entries { get; } = new();
     public ChatState State { get; private set; } = ChatState.Idle;
@@ -59,7 +60,7 @@ public sealed class ChatService
 
     public event Action? Changed;
 
-    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost, SavedAnalysisRepository saved, AnswerGroundingService grounding, AnswerCriticService critic, ConfidenceService confidence, SchemaMemoryService memory, ConversationMemoryService conversation)
+    public ChatService(SettingsService settings, ModelRouter router, AgentToolbox toolbox, HumanInTheLoop hitl, SchemaCache schemaCache, ApprovalService approval, ActivityJournal journal, CostService cost, SavedAnalysisRepository saved, AnswerGroundingService grounding, AnswerCriticService critic, ConfidenceService confidence, SchemaMemoryService memory, ConversationMemoryService conversation, SemanticLayerService semantic)
     {
         _settings = settings;
         _router = router;
@@ -75,6 +76,7 @@ public sealed class ChatService
         _confidence = confidence;
         _memory = memory;
         _conversation = conversation;
+        _semantic = semantic;
     }
 
     public void Reset()
@@ -316,7 +318,9 @@ public sealed class ChatService
            "Use run_query for read-only questions, list_tables/describe_table/sample_rows/explain_plan to explore the schema, " +
            "and propose_write only when the user explicitly asks to change data. Never invent table or column names.";
         var memory = await _memory.SummarizeForPromptAsync(connectionId);
-        return string.IsNullOrEmpty(memory) ? baseText : baseText + "\n" + memory;
+        var glossary = await _semantic.BuildGlossaryAsync(connectionId);
+        var extra = string.Join("\n", new[] { memory, glossary }.Where(s => !string.IsNullOrEmpty(s)));
+        return string.IsNullOrEmpty(extra) ? baseText : baseText + "\n" + extra;
     }
 
     private static string ExtractSql(string argumentsJson)

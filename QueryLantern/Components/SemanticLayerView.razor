@@ -1,0 +1,87 @@
+@namespace QueryLantern.Components
+@using QueryLantern.Models
+@using QueryLantern.Services
+@inject SemanticLayerService Semantic
+
+@if (ConnectionId > 0)
+{
+    <div class="card p-3 mt-3">
+        <h4>Semantic layer</h4>
+        <p class="text-muted small mb-2">Map business terms to schema expressions so the model translates natural language correctly.</p>
+
+        @if (_terms is null)
+        {
+            <p class="text-muted mb-0">Loading…</p>
+        }
+        else if (_terms.Count == 0)
+        {
+            <p class="text-muted mb-0">No terms yet.</p>
+        }
+        else
+        {
+            <ul class="list-group mb-2">
+                @foreach (var t in _terms)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><span class="badge bg-secondary">@t.Kind</span> <strong>@t.Term</strong> &rarr; @t.Expression @(t.Table is null ? "" : $"on {t.Table}")</span>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(t.Id)">Delete</button>
+                    </li>
+                }
+            </ul>
+        }
+
+        <div class="d-flex gap-2 flex-wrap">
+            <InputSelect class="form-select form-select-sm w-auto" @bind-Value="_kind">
+                @foreach (var k in Enum.GetValues<SemanticTermKind>())
+                {
+                    <option value="@k">@k</option>
+                }
+            </InputSelect>
+            <InputText class="form-control form-control-sm" @bind-Value="_term" placeholder="Business term (e.g. revenue)" />
+            <InputText class="form-control form-control-sm" @bind-Value="_expression" placeholder="Expression (e.g. SUM(amount))" />
+            <InputText class="form-control form-control-sm" @bind-Value="_table" placeholder="Table (optional)" />
+            <button class="btn btn-sm btn-primary" @onclick="AddAsync">Add</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int ConnectionId { get; set; }
+
+    private List<SemanticTerm>? _terms;
+    private string _term = string.Empty;
+    private string _expression = string.Empty;
+    private string _table = string.Empty;
+    private SemanticTermKind _kind = SemanticTermKind.Metric;
+
+    protected override async Task OnParametersSetAsync() => await RefreshAsync();
+
+    private async Task RefreshAsync()
+    {
+        if (ConnectionId <= 0)
+        {
+            _terms = null;
+            return;
+        }
+
+        _terms = (await Semantic.ListAsync(ConnectionId)).ToList();
+    }
+
+    private async Task AddAsync()
+    {
+        if (ConnectionId <= 0)
+        {
+            return;
+        }
+
+        await Semantic.AddTermAsync(ConnectionId, _term, _kind, _expression, _table);
+        _term = _expression = _table = string.Empty;
+        await RefreshAsync();
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        await Semantic.DeleteAsync(id);
+        await RefreshAsync();
+    }
+}

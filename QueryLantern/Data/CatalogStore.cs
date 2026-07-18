@@ -78,6 +78,15 @@ public sealed class CatalogStore : IDisposable
                 Kind INTEGER NOT NULL,
                 CreatedAt TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS SemanticTerms (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ConnectionId INTEGER NOT NULL,
+                Term TEXT NOT NULL,
+                Kind INTEGER NOT NULL,
+                Expression TEXT NOT NULL,
+                TableName TEXT
+            );
             """;
         cmd.ExecuteNonQuery();
     }
