@@ -100,13 +100,7 @@ else
     {
         var (_, change, result) = await Scheduler.RunAsync(id);
         _change = change;
-        _resultJson = System.Text.Json.JsonSerializer.Serialize(new
-        {
-            columns = result.Columns.Select(c => new { c.Name, c.DataType }),
-            rows = result.Rows,
-            rowCount = result.RowCount,
-            truncatedAt = result.TruncatedAt
-        });
+        _resultJson = QueryLantern.Services.ResultJson.Serialize(result);
         await RefreshAsync();
     }
 

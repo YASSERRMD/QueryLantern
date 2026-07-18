@@ -49,13 +49,7 @@ public sealed class ScheduledAnalysisService
             ? $"{change.CurrentRowCount} rows ({(change.RowDelta >= 0 ? "+" : "")}{change.RowDelta} vs previous)"
             : $"{change.CurrentRowCount} rows; {change.MetricDelta}";
 
-        var resultJson = JsonSerializer.Serialize(new
-        {
-            columns = result.Columns.Select(c => new { c.Name, c.DataType }),
-            rows = result.Rows,
-            rowCount = result.RowCount,
-            truncatedAt = result.TruncatedAt
-        });
+        var resultJson = ResultJson.Serialize(result);
 
         await _schedules.UpdateRunWithResultAsync(id, DateTime.UtcNow, summary, resultJson);
         return (schedule, change, result);
