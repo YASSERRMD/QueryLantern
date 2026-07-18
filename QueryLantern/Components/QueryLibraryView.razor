@@ -1,0 +1,61 @@
+@namespace QueryLantern.Components
+@using QueryLantern.Models
+@using QueryLantern.Services
+@inject QueryLibraryService Library
+
+@if (ConnectionId > 0)
+{
+    <div class="card p-3 mt-3">
+        <h4>Query library</h4>
+        <p class="text-muted small mb-2">Successful analyses are saved here and reused as few-shot examples for similar questions.</p>
+
+        @if (_queries is null)
+        {
+            <p class="text-muted mb-0">Loading…</p>
+        }
+        else if (_queries.Count == 0)
+        {
+            <p class="text-muted mb-0">No saved queries yet. High-confidence answers are saved automatically.</p>
+        }
+        else
+        {
+            <ul class="list-group">
+                @foreach (var q in _queries)
+                {
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <span><strong>@q.Question</strong> @if (q.Rating > 0) { <span class="badge bg-success">rated</span> }</span>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(q.Id)">Delete</button>
+                        </div>
+                        <pre class="mb-0 small">@q.Sql</pre>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int ConnectionId { get; set; }
+
+    private List<LibraryQuery>? _queries;
+
+    protected override async Task OnParametersSetAsync() => await RefreshAsync();
+
+    private async Task RefreshAsync()
+    {
+        if (ConnectionId <= 0)
+        {
+            _queries = null;
+            return;
+        }
+
+        _queries = (await Library.ListAsync(ConnectionId)).ToList();
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        await Library.DeleteAsync(id);
+        await RefreshAsync();
+    }
+}

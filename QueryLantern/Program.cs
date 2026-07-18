@@ -24,6 +24,8 @@ builder.Services.AddSingleton<SchemaMemoryRepository>();
 builder.Services.AddScoped<QueryLantern.Services.SchemaMemoryService>();
 builder.Services.AddSingleton<QueryLantern.Data.SemanticLayerRepository>();
 builder.Services.AddScoped<QueryLantern.Services.SemanticLayerService>();
+builder.Services.AddSingleton<QueryLantern.Data.QueryLibraryRepository>();
+builder.Services.AddScoped<QueryLantern.Services.QueryLibraryService>();
 builder.Services.AddScoped<QueryLantern.Services.ConversationMemoryService>();
 
 // Secret vault encrypts passwords and API keys at rest. The key lives in a local file outside the
