@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000" role="img" aria-label="MY monogram logo">
+  <title>MY — Mohamed Yasser</title>
+  <defs>
+    <linearGradient id="my-navy" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1B2A4A"/>
+      <stop offset="100%" stop-color="#0F1B33"/>
+    </linearGradient>
+    <linearGradient id="my-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D8BC6E"/>
+      <stop offset="50%" stop-color="#C5A55A"/>
+      <stop offset="100%" stop-color="#A8884A"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Stacked layers (back to front, creating depth) -->
+  <!-- Navy base layer (thickest, back) -->
+  <rect x="150" y="300" width="700" height="520" rx="30" fill="url(#my-navy)"/>
+  <!-- Light grey middle layer -->
+  <rect x="190" y="250" width="620" height="470" rx="24" fill="#E3E3E3"/>
+  <!-- White top layer (thinnest) -->
+  <rect x="225" y="205" width="550" height="430" rx="18" fill="#FFFFFF"/>
+
+  <!-- Gold diamond frame -->
+  <polygon points="500,215 735,450 500,685 265,450"
+           fill="none" stroke="url(#my-gold)" stroke-width="15" stroke-linejoin="round"/>
+  <!-- Subtle inner highlight on the diamond -->
+  <polygon points="500,230 720,450 500,670 280,450"
+           fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.35" stroke-linejoin="round"/>
+
+  <!-- M (navy) and Y (gold) monogram, centred in the diamond -->
+  <text x="448" y="450" font-family="Georgia, 'Times New Roman', serif"
+        font-size="300" font-weight="bold" fill="#1B2A4A"
+        text-anchor="middle" dominant-baseline="central">M</text>
+  <text x="592" y="452" font-family="Georgia, 'Times New Roman', serif"
+        font-size="215" font-weight="bold" fill="#C5A55A"
+        text-anchor="middle" dominant-baseline="central">Y</text>
+</svg>

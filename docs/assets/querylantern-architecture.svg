@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="2048" viewBox="0 0 1536 2048">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M1,1 L7,4 L1,7 Z" fill="#C5A55A"/>
+    </marker>
+    <style>
+      .title { font: 700 42px Arial, Helvetica, sans-serif; fill: #1B2A4A; }
+      .label { font: 700 34px Arial, Helvetica, sans-serif; fill: #1B2A4A; }
+      .labelSmall { font: 700 26px Arial, Helvetica, sans-serif; fill: #1B2A4A; }
+      .body { font: 500 28px Arial, Helvetica, sans-serif; fill: #3F3F3F; }
+      .whiteText { font: 700 32px Arial, Helvetica, sans-serif; fill: #FFFFFF; }
+      .chip { font: 700 22px Arial, Helvetica, sans-serif; fill: #1B2A4A; }
+      .node { fill: #F2F2F2; stroke: #1B2A4A; stroke-width: 4; }
+      .emphasis { fill: #1B2A4A; stroke: #1B2A4A; stroke-width: 4; }
+      .arrow { fill: none; stroke: #C5A55A; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow); }
+      .accent { fill: #C5A55A; }
+    </style>
+  </defs>
+
+  <rect width="1536" height="2048" fill="#FFFFFF"/>
+  <text x="768" y="96" text-anchor="middle" class="title">QueryLantern Architecture</text>
+  <rect x="388" y="126" width="760" height="10" rx="5" class="accent"/>
+
+  <rect x="160" y="190" width="320" height="116" rx="26" class="emphasis"/>
+  <text x="320" y="260" text-anchor="middle" class="whiteText">USER</text>
+
+  <path d="M480 248 H578" class="arrow"/>
+  <rect x="612" y="180" width="764" height="136" rx="26" class="node"/>
+  <text x="994" y="236" text-anchor="middle" class="label">Blazor Web UI (.NET 9)</text>
+  <text x="994" y="278" text-anchor="middle" class="body">Natural language chat</text>
+
+  <path d="M994 316 V430" class="arrow"/>
+  <rect x="438" y="456" width="660" height="124" rx="26" class="emphasis"/>
+  <text x="768" y="530" text-anchor="middle" class="whiteText">ChatService (Orchestration)</text>
+
+  <path d="M768 580 V694" class="arrow"/>
+  <rect x="148" y="720" width="1240" height="320" rx="32" class="node"/>
+  <rect x="148" y="720" width="1240" height="74" rx="32" class="emphasis"/>
+  <rect x="148" y="764" width="1240" height="30" class="emphasis"/>
+  <text x="768" y="770" text-anchor="middle" class="whiteText">Ancora Agent Runtime</text>
+
+  <rect x="188" y="858" width="112" height="86" rx="20" class="node"/>
+  <text x="244" y="911" text-anchor="middle" class="labelSmall">Plan</text>
+  <path d="M300 901 H342" class="arrow"/>
+
+  <rect x="378" y="842" width="238" height="118" rx="20" class="node"/>
+  <text x="497" y="890" text-anchor="middle" class="labelSmall">Validate</text>
+  <text x="497" y="928" text-anchor="middle" class="chip">(EXPLAIN dry-run)</text>
+  <path d="M616 901 H658" class="arrow"/>
+
+  <rect x="694" y="858" width="112" height="86" rx="20" class="node"/>
+  <text x="750" y="911" text-anchor="middle" class="labelSmall">Run</text>
+  <path d="M806 901 H848" class="arrow"/>
+
+  <rect x="884" y="858" width="136" height="86" rx="20" class="node"/>
+  <text x="952" y="911" text-anchor="middle" class="labelSmall">Ground</text>
+  <path d="M1020 901 H1062" class="arrow"/>
+
+  <rect x="1098" y="858" width="136" height="86" rx="20" class="node"/>
+  <text x="1166" y="911" text-anchor="middle" class="labelSmall">Critique</text>
+  <path d="M1234 901 H1276" class="arrow"/>
+  <rect x="1312" y="858" width="136" height="86" rx="20" class="node"/>
+  <text x="1380" y="911" text-anchor="middle" class="labelSmall">Answer</text>
+
+  <path d="M1230 720 V650" class="arrow"/>
+  <rect x="1104" y="508" width="386" height="126" rx="24" class="node"/>
+  <text x="1297" y="552" text-anchor="middle" class="chip">Governed Tools:</text>
+  <text x="1297" y="586" text-anchor="middle" class="chip">read-only run_query,</text>
+  <text x="1297" y="616" text-anchor="middle" class="chip">propose_write (human approval)</text>
+
+  <path d="M360 1040 H144 V1224 H340" class="arrow"/>
+  <rect x="84" y="1248" width="512" height="116" rx="24" class="node"/>
+  <text x="340" y="1296" text-anchor="middle" class="labelSmall">SQLite Catalog</text>
+  <text x="340" y="1334" text-anchor="middle" class="chip">(encrypted secrets, plans, memory)</text>
+
+  <path d="M1176 1040 H1392 V1224 H1196" class="arrow"/>
+  <rect x="984" y="1248" width="424" height="104" rx="24" class="node"/>
+  <text x="1196" y="1312" text-anchor="middle" class="labelSmall">MCP Server (stdio JSON-RPC)</text>
+
+  <path d="M768 1040 V1418" class="arrow"/>
+  <rect x="408" y="1444" width="720" height="126" rx="30" class="emphasis"/>
+  <text x="768" y="1520" text-anchor="middle" class="whiteText">IDatabaseAdapter</text>
+
+  <path d="M768 1570 V1650" class="arrow"/>
+  <path d="M768 1650 H148 V1722" class="arrow"/>
+  <path d="M768 1650 H324 V1722" class="arrow"/>
+  <path d="M768 1650 H498 V1722" class="arrow"/>
+  <path d="M768 1650 H666 V1722" class="arrow"/>
+  <path d="M768 1650 H818 V1722" class="arrow"/>
+  <path d="M768 1650 H973 V1722" class="arrow"/>
+  <path d="M768 1650 H1140 V1722" class="arrow"/>
+  <path d="M768 1650 H1298 V1722" class="arrow"/>
+
+  <rect x="58" y="1748" width="180" height="76" rx="22" class="node"/>
+  <text x="148" y="1796" text-anchor="middle" class="chip">PostgreSQL</text>
+  <rect x="246" y="1748" width="156" height="76" rx="22" class="node"/>
+  <text x="324" y="1796" text-anchor="middle" class="chip">MySQL</text>
+  <rect x="410" y="1748" width="176" height="76" rx="22" class="node"/>
+  <text x="498" y="1796" text-anchor="middle" class="chip">SQL Server</text>
+  <rect x="594" y="1748" width="144" height="76" rx="22" class="node"/>
+  <text x="666" y="1796" text-anchor="middle" class="chip">Oracle</text>
+  <rect x="746" y="1748" width="144" height="76" rx="22" class="node"/>
+  <text x="818" y="1796" text-anchor="middle" class="chip">SQLite</text>
+  <rect x="898" y="1748" width="150" height="76" rx="22" class="node"/>
+  <text x="973" y="1796" text-anchor="middle" class="chip">DuckDB</text>
+  <rect x="1056" y="1748" width="168" height="76" rx="22" class="node"/>
+  <text x="1140" y="1796" text-anchor="middle" class="chip">ClickHouse</text>
+  <rect x="1232" y="1748" width="132" height="76" rx="22" class="node"/>
+  <text x="1298" y="1796" text-anchor="middle" class="chip">ODBC</text>
+</svg>
